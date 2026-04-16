@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Public routes that don't need auth
-  const publicPaths = ["/login", "/api/health"];
+  const publicPaths = ["/login", "/api/health", "/api/auth/signout"];
   const isPublic = publicPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
@@ -43,6 +43,13 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
+
+    // Add session_expired flag if this looks like an expired session (has Supabase cookies but no valid user)
+    const hasSessionCookies = request.cookies.getAll().some((c) => c.name.includes("supabase"));
+    if (hasSessionCookies) {
+      loginUrl.searchParams.set("session_expired", "1");
+    }
+
     return NextResponse.redirect(loginUrl);
   }
 

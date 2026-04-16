@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/dashboard/Header";
 import KpiCard from "@/components/dashboard/KpiCard";
 import SectionTitle from "@/components/dashboard/SectionTitle";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import MilestoneBar from "@/components/dashboard/MilestoneBar";
 import ChatPanel from "@/components/chat/ChatPanel";
+import { createClient } from "@/lib/supabase/client";
 import type { Project } from "@/lib/supabase/types";
 
 // ── Seed data (replaced by Supabase queries in Phase 2) ──────────
@@ -72,6 +73,34 @@ const SEED_MILESTONES = [
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("dashboard");
   const [chatOpen, setChatOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string; role: string }>({
+    name: "Safouen",
+    email: "",
+    role: "admin",
+  });
+
+  // Fetch authenticated user info
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        // Try to get profile from users table
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name, email, role")
+          .eq("id", authUser.id)
+          .single();
+
+        setUser({
+          name: profile?.full_name || authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User",
+          email: profile?.email || authUser.email || "",
+          role: profile?.role || "member",
+        });
+      }
+    }
+    loadUser();
+  }, []);
 
   const handleProjectClick = (project: Project) => {
     // TODO: navigate to /projects/[id] detail view
@@ -85,7 +114,9 @@ export default function DashboardPage() {
         <Header
           activeView={activeView}
           onViewChange={setActiveView}
-          userName="Safouen"
+          userName={user.name}
+          userEmail={user.email}
+          userRole={user.role}
         />
 
         <main className="flex-1 overflow-y-auto px-8 py-6">

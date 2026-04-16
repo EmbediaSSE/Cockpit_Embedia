@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import Image from "next/image";
 
@@ -8,9 +9,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "magic">("login");
   const [magicSent, setMagicSent] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Show session expired message
+  useEffect(() => {
+    if (searchParams.get("session_expired") === "1") {
+      setInfo("Your session has expired. Please sign in again.");
+    }
+  }, [searchParams]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,6 +122,12 @@ export default function LoginPage() {
                   className="w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-dark-5 focus:border-gold outline-none transition-colors"
                   placeholder="Enter password"
                 />
+              </div>
+            )}
+
+            {info && (
+              <div className="text-gold text-xs bg-gold/10 border border-gold/20 rounded-lg px-3 py-2">
+                {info}
               </div>
             )}
 
