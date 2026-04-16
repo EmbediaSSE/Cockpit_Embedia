@@ -9,18 +9,19 @@ import MilestoneBar from "@/components/dashboard/MilestoneBar";
 import ChatPanel from "@/components/chat/ChatPanel";
 import SettingsView from "@/components/settings/SettingsView";
 import UserManagementView from "@/components/settings/UserManagementView";
+import ProjectsView from "@/components/projects/ProjectsView";
+import PipelineView from "@/components/pipeline/PipelineView";
+import OrgChartView from "@/components/org/OrgChartView";
 import { createClient } from "@/lib/supabase/client";
 import type { Project } from "@/lib/supabase/types";
 
-// ── Seed data (replaced by Supabase queries in Phase 2) ──────────
-
-const SEED_KPIS = [
-  { label: "Active Projects", value: "6", sub: "3 consultancy, 3 product", accent: "gold" as const },
-  { label: "Revenue Pipeline", value: "€247k", sub: "Won + qualified", accent: "green" as const },
-  { label: "Avg Margin", value: "72%", sub: "Across active engagements", accent: "amber" as const },
-  { label: "Sprint Velocity", value: "14 pts", sub: "MBSE Agent Sprint 1", accent: "blue" as const },
-  { label: "Overdue Items", value: "2", sub: "1 task, 1 milestone", accent: "red" as const },
-];
+// ── KPI type ──────────────────────────────────────────────────────
+interface KpiData {
+  label: string;
+  value: string;
+  sub: string;
+  accent: "gold" | "green" | "amber" | "blue" | "red";
+}
 
 const SEED_PROJECTS: Project[] = [
   {
@@ -75,6 +76,9 @@ const SEED_MILESTONES = [
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("dashboard");
   const [chatOpen, setChatOpen] = useState(false);
+  const [kpis, setKpis] = useState<KpiData[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [kpisLoading, setKpisLoading] = useState(true);
   const [user, setUser] = useState<{ name: string; email: string; role: string }>({
     name: "Safouen",
     email: "",
@@ -87,7 +91,6 @@ export default function DashboardPage() {
       const supabase = createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
-        // Try to get profile from users table
         const { data: profile } = await supabase
           .from("users")
           .select("full_name, email, role")
@@ -102,6 +105,97 @@ export default function DashboardPage() {
       }
     }
     loadUser();
+  }, []);
+
+  // Fetch live KPIs from Supabase
+  useEffect(() => {
+    async function loadKpis() {
+      const supabase = createClient();
+
+      // Load projects, tasks, and pipeline in parallel
+      const [projectsRes, tasksRes, pipelineRes] = await Promise.all([
+        supabase
+          .from("projects")
+          .select("id, code, name, client, category, stage, status, priority, summary, selling_price, margin_pct, target_date, created_at, updated_at")
+          .order("priority", { ascending: true }),
+        supabase
+          .from("wbs_tasks")
+          .select("id, status, due_date"),
+        supabase
+          .from("pipeline_accounts")
+          .select("id, status"),
+      ]);
+
+      const allProjects = (projectsRes.data || []) as Project[];
+      const allTasks = tasksRes.data || [];
+      const allAccounts = pipelineRes.data || [];
+
+      setProjects(allProjects);
+
+      // Compute KPIs
+      const activeProjects = allProjects.filter((p) => p.status === "active");
+      const consultancy = activeProjects.filter((p) => p.category === "Consultancy").length;
+      const product = activeProjects.filter((p) => p.category === "Product").length;
+
+      // Revenue: sum selling_price for won/qualified/active
+      const revenueProjects = allProjects.filter((p) =>
+        p.selling_price > 0 && ["active", "pending"].includes(p.status)
+      );
+      const totalRevenue = revenueProjects.reduce((sum, p) => sum + p.selling_price, 0);
+
+      // Avg margin across projects with revenue
+      const marginProjects = allProjects.filter((p) => p.margin_pct > 0);
+      const avgMargin = marginProjects.length > 0
+        ? Math.round(marginProjects.reduce((sum, p) => sum + p.margin_pct, 0) / marginProjects.length)
+        : 0;
+
+      // Pipeline accounts in progress
+      const pipelineInProgress = allAccounts.filter((a) =>
+        ["qualified", "proposal", "contacted"].includes(a.status)
+      ).length;
+      const pipelineWon = allAccounts.filter((a) => a.status === "won").length;
+
+      // Overdue tasks
+      const today = new Date().toISOString().split("T")[0];
+      const overdueTasks = allTasks.filter(
+        (t) => t.due_date && t.due_date < today && t.status !== "done"
+      ).length;
+
+      setKpis([
+        {
+          label: "Active Projects",
+          value: String(activeProjects.length),
+          sub: `${consultancy} consultancy, ${product} product`,
+          accent: "gold",
+        },
+        {
+          label: "Revenue Pipeline",
+          value: totalRevenue >= 1000 ? `€${(totalRevenue / 1000).toFixed(0)}k` : `€${totalRevenue}`,
+          sub: `${revenueProjects.length} billable project${revenueProjects.length !== 1 ? "s" : ""}`,
+          accent: "green",
+        },
+        {
+          label: "Avg Margin",
+          value: `${avgMargin}%`,
+          sub: `Across ${marginProjects.length} engagement${marginProjects.length !== 1 ? "s" : ""}`,
+          accent: "amber",
+        },
+        {
+          label: "BD Pipeline",
+          value: String(allAccounts.length),
+          sub: `${pipelineWon} won, ${pipelineInProgress} in progress`,
+          accent: "blue",
+        },
+        {
+          label: "Overdue Items",
+          value: String(overdueTasks),
+          sub: overdueTasks === 0 ? "All on track" : `${overdueTasks} task${overdueTasks !== 1 ? "s" : ""} past due`,
+          accent: overdueTasks > 0 ? "red" : "green",
+        },
+      ]);
+      setKpisLoading(false);
+    }
+    loadKpis();
   }, []);
 
   const handleProjectClick = (project: Project) => {
@@ -126,9 +220,15 @@ export default function DashboardPage() {
             <>
               {/* KPI Row */}
               <div className="grid grid-cols-5 gap-4 mb-2">
-                {SEED_KPIS.map((kpi) => (
-                  <KpiCard key={kpi.label} {...kpi} />
-                ))}
+                {kpisLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="bg-dark-2 rounded-[10px] border border-dark-4 h-20 animate-pulse" />
+                  ))
+                ) : (
+                  kpis.map((kpi) => (
+                    <KpiCard key={kpi.label} {...kpi} />
+                  ))
+                )}
               </div>
 
               {/* Milestones */}
@@ -147,7 +247,7 @@ export default function DashboardPage() {
                   <div className="w-[80px] text-right">Stage</div>
                   <div className="w-5" />
                 </div>
-                {SEED_PROJECTS.map((project) => (
+                {(projects.length > 0 ? projects : SEED_PROJECTS).map((project) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
@@ -179,21 +279,11 @@ export default function DashboardPage() {
             </>
           )}
 
-          {activeView === "projects" && (
-            <div className="text-center py-20 text-grey">
-              <div className="text-4xl mb-4">🏗️</div>
-              <div className="text-lg font-semibold">Projects View</div>
-              <div className="text-sm text-dark-5 mt-2">Detailed project cards with WBS — coming in next sprint</div>
-            </div>
-          )}
+          {activeView === "projects" && <ProjectsView />}
 
-          {activeView === "pipeline" && (
-            <div className="text-center py-20 text-grey">
-              <div className="text-4xl mb-4">🤝</div>
-              <div className="text-lg font-semibold">BD Pipeline</div>
-              <div className="text-sm text-dark-5 mt-2">Kanban board with account stages — coming in next sprint</div>
-            </div>
-          )}
+          {activeView === "pipeline" && <PipelineView />}
+
+          {activeView === "org" && <OrgChartView />}
 
           {activeView === "sprint" && (
             <div className="text-center py-20 text-grey">
