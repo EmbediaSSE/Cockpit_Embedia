@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -70,10 +71,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold tracking-tight mb-1">
-            <span className="text-gold">Embedia</span>
-            <span className="text-white">.io</span>
-          </h1>
+          <Image
+            src="/embedia-logo.png"
+            alt="Embedia.io"
+            width={180}
+            height={180}
+            className="mx-auto mb-3"
+            priority
+          />
           <p className="text-grey text-sm">CEO War Room Cockpit</p>
         </div>
 

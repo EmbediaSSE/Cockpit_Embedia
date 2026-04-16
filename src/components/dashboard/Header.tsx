@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface HeaderProps {
   activeView: string;
@@ -27,9 +28,18 @@ export default function Header({ activeView, onViewChange, userName }: HeaderPro
 
   return (
     <header className="bg-dark-2 border-b-2 border-gold px-8 py-4 flex justify-between items-center sticky top-0 z-50 backdrop-blur-xl">
-      <h1 className="text-xl font-bold tracking-tight">
-        <span className="text-gold">Embedia</span>.io
-      </h1>
+      <div className="flex items-center gap-3">
+        <Image
+          src="/embedia-logo.png"
+          alt="Embedia.io"
+          width={36}
+          height={36}
+          className="rounded"
+        />
+        <h1 className="text-xl font-bold tracking-tight">
+          <span className="text-gold">Embedia</span>.io
+        </h1>
+      </div>
 
       <nav className="flex gap-1 bg-dark-3 rounded-lg p-0.5">
         {NAV_ITEMS.map((item) => (
