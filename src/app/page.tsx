@@ -7,6 +7,8 @@ import SectionTitle from "@/components/dashboard/SectionTitle";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import MilestoneBar from "@/components/dashboard/MilestoneBar";
 import ChatPanel from "@/components/chat/ChatPanel";
+import SettingsView from "@/components/settings/SettingsView";
+import UserManagementView from "@/components/settings/UserManagementView";
 import { createClient } from "@/lib/supabase/client";
 import type { Project } from "@/lib/supabase/types";
 
@@ -199,6 +201,14 @@ export default function DashboardPage() {
               <div className="text-lg font-semibold">Sprint Board</div>
               <div className="text-sm text-dark-5 mt-2">Task board for MBSE Agent Sprint 1 — coming in next sprint</div>
             </div>
+          )}
+
+          {activeView === "settings" && (
+            <SettingsView onViewChange={setActiveView} />
+          )}
+
+          {activeView === "admin" && (
+            <UserManagementView onViewChange={setActiveView} />
           )}
         </main>
       </div>
