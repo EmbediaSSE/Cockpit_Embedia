@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-// ── Supabase server client ──────────────────────────────────────
+// ── Supabase server client (anon, for reads) ───────────────────
 
 async function createClient() {
   const cookieStore = await cookies();
@@ -14,6 +15,15 @@ async function createClient() {
         get(name: string) { return cookieStore.get(name)?.value; },
       },
     }
+  );
+}
+
+// ── Supabase service-role client (bypasses RLS, for writes) ────
+
+function createServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
@@ -249,6 +259,63 @@ export async function GET(
     }
   } catch (err) {
     console.error("[panel API]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// ── PATCH /api/panel/[type]/[id] ──────────────────────────────
+// Allowed fields per type — whitelist keeps the API safe.
+
+const ALLOWED_FIELDS: Record<string, string[]> = {
+  project:   ["status", "stage", "phase", "priority", "summary", "target_date", "selling_price", "margin_pct"],
+  task:      ["status", "assignee", "due_date", "sprint_name", "effort_days"],
+  milestone: ["status", "target_date", "name"],
+  decision:  ["status", "owner", "deadline", "note"],
+  account:   ["status", "priority", "notes", "next_action", "last_touch"],
+};
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ type: string; id: string }> }
+) {
+  const { type, id } = await params;
+  const allowed = ALLOWED_FIELDS[type];
+  if (!allowed) return NextResponse.json({ error: `Updates not supported for type: ${type}` }, { status: 400 });
+
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Strip fields not in the whitelist
+  const patch: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in body) patch[key] = body[key];
+  }
+  if (Object.keys(patch).length === 0)
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+
+  const tableMap: Record<string, string> = {
+    project:   "projects",
+    task:      "wbs_tasks",
+    milestone: "milestones",
+    decision:  "decisions",
+    account:   "pipeline_accounts",
+  };
+
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from(tableMap[type])
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, data });
+  } catch (err) {
+    console.error("[panel PATCH]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

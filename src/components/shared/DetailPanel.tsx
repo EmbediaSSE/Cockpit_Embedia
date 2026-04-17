@@ -141,6 +141,201 @@ interface ContentPanelData {
 
 type PanelData = ProjectPanelData | AccountPanelData | MilestonePanelData | DecisionPanelData | NewsPanelData | ContentPanelData | TaskPanelData | null;
 
+// ── Patch helper ───────────────────────────────────────────────
+
+async function patchPanel(type: string, id: string, fields: Record<string, unknown>) {
+  const res = await fetch(`/api/panel/${type}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) throw new Error(`Patch failed: ${res.status}`);
+  return res.json();
+}
+
+// ── Inline edit components ─────────────────────────────────────
+
+interface EditableSelectProps {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onSave: (v: string) => Promise<void>;
+  renderValue?: (v: string) => React.ReactNode;
+}
+
+function EditableSelect({ label, value, options, onSave, renderValue }: EditableSelectProps) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [current, setCurrent] = useState(value);
+
+  // Keep in sync if parent data reloads
+  useEffect(() => { setCurrent(value); }, [value]);
+
+  const handleChange = async (v: string) => {
+    if (v === current) { setEditing(false); return; }
+    setSaving(true);
+    try {
+      await onSave(v);
+      setCurrent(v);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      // revert on error
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  return (
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative">
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
+        <div className="flex items-center gap-1">
+          {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
+          {saved  && <span className="text-[9px] text-status-green">✓ saved</span>}
+          {!saving && !saved && (
+            <button
+              onClick={() => setEditing(!editing)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
+              title="Edit"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        <select
+          autoFocus
+          defaultValue={current}
+          onChange={(e) => handleChange(e.target.value)}
+          onBlur={(e) => handleChange(e.target.value)}
+          className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-gold"
+        >
+          {options.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      ) : (
+        <div
+          className="text-xs text-white cursor-pointer hover:text-gold transition-colors"
+          onClick={() => setEditing(true)}
+          title="Click to edit"
+        >
+          {renderValue ? renderValue(current) : current}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface EditableTextProps {
+  label: string;
+  value: string | null;
+  placeholder?: string;
+  onSave: (v: string) => Promise<void>;
+  multiline?: boolean;
+}
+
+function EditableText({ label, value, placeholder = "—", onSave, multiline = false }: EditableTextProps) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [current, setCurrent] = useState(value || "");
+  const [draft, setDraft] = useState(value || "");
+
+  useEffect(() => { setCurrent(value || ""); setDraft(value || ""); }, [value]);
+
+  const commit = async () => {
+    if (draft === current) { setEditing(false); return; }
+    setSaving(true);
+    try {
+      await onSave(draft);
+      setCurrent(draft);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setDraft(current);
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") { setDraft(current); setEditing(false); }
+    if (e.key === "Enter" && !multiline) commit();
+  };
+
+  return (
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative">
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
+        <div className="flex items-center gap-1">
+          {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
+          {saved  && <span className="text-[9px] text-status-green">✓ saved</span>}
+          {!saving && !saved && !editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
+              title="Edit"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+              </svg>
+            </button>
+          )}
+          {editing && (
+            <button
+              onClick={commit}
+              className="text-[9px] text-gold hover:text-white transition-colors font-semibold"
+            >
+              Save
+            </button>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        multiline ? (
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={handleKey}
+            rows={3}
+            placeholder={placeholder}
+            className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1.5 focus:outline-none focus:border-gold resize-none"
+          />
+        ) : (
+          <input
+            autoFocus
+            type="text"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={handleKey}
+            placeholder={placeholder}
+            className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-gold"
+          />
+        )
+      ) : (
+        <div
+          className={`text-xs cursor-pointer hover:text-gold transition-colors ${current ? "text-white" : "text-dark-5 italic"}`}
+          onClick={() => setEditing(true)}
+          title="Click to edit"
+        >
+          {current || placeholder}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Utilities ──────────────────────────────────────────────────
 
 function fmt(date: string | null) {
@@ -149,12 +344,13 @@ function fmt(date: string | null) {
 }
 
 function isOverdue(date: string | null, status: string) {
-  if (!date || status === "done") return false;
+  if (!date || status === "done" || status === "delivered") return false;
   return new Date(date) < new Date();
 }
 
 const STATUS_DOT: Record<string, string> = {
   done:        "bg-status-green",
+  delivered:   "bg-status-green",
   active:      "bg-blue-400",
   in_progress: "bg-blue-400",
   pending:     "bg-dark-5",
@@ -181,9 +377,32 @@ const PRIORITY_BADGE: Record<string, string> = {
 // ── Sub-renderers by panel type ────────────────────────────────
 
 function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: (type: PanelType, id: string) => void }) {
+  const patch = (fields: Record<string, unknown>) => patchPanel("project", data.id, fields);
+
+  const statusOptions = [
+    { value: "active",    label: "Active" },
+    { value: "delivered", label: "Delivered" },
+    { value: "on_hold",   label: "On Hold" },
+    { value: "planning",  label: "Planning" },
+    { value: "cancelled", label: "Cancelled" },
+  ];
+  const stageOptions = [
+    { value: "Planning",  label: "Planning" },
+    { value: "Active",    label: "Active" },
+    { value: "Delivered", label: "Delivered" },
+    { value: "On Hold",   label: "On Hold" },
+    { value: "Closed",    label: "Closed" },
+  ];
+  const priorityOptions = [
+    { value: "P0", label: "P0 — Critical" },
+    { value: "P1", label: "P1 — High" },
+    { value: "P2", label: "P2 — Medium" },
+    { value: "P3", label: "P3 — Low" },
+  ];
+
   return (
     <>
-      {/* Metadata strip */}
+      {/* Metadata badges */}
       <div className="flex flex-wrap gap-2 mb-4">
         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRIORITY_BADGE[data.priority] || PRIORITY_BADGE.P2}`}>
           {data.priority}
@@ -193,19 +412,53 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
         {data.phase && <span className="px-2 py-0.5 rounded text-[10px] bg-dark-3 text-dark-5">{data.phase}</span>}
       </div>
 
-      {/* Summary 2×2 grid */}
+      {/* Editable fields — 2×2 */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        {[
-          { label: "Status",   value: data.status.replace("_", " ").toUpperCase() },
-          { label: "Client",   value: data.client },
-          { label: "Progress", value: `${data.progress}% (${data.doneCount}/${data.taskCount} tasks)` },
-          { label: "Target",   value: data.target_date ? fmt(data.target_date) : "Not set" },
-        ].map((item) => (
-          <div key={item.label} className="bg-dark-3 rounded-lg px-3 py-2">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">{item.label}</div>
-            <div className="text-xs text-white">{item.value}</div>
-          </div>
-        ))}
+        <EditableSelect
+          label="Status"
+          value={data.status}
+          options={statusOptions}
+          onSave={v => patch({ status: v, stage: stageOptions.find(s => s.value.toLowerCase() === v)?.value || data.stage })}
+          renderValue={v => v.replace("_", " ").toUpperCase()}
+        />
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Client</div>
+          <div className="text-xs text-white">{data.client}</div>
+        </div>
+        <EditableSelect
+          label="Priority"
+          value={data.priority}
+          options={priorityOptions}
+          onSave={v => patch({ priority: v })}
+        />
+        <EditableSelect
+          label="Stage"
+          value={data.stage}
+          options={stageOptions}
+          onSave={v => patch({ stage: v })}
+        />
+      </div>
+
+      {/* Phase / Label */}
+      <div className="mb-3">
+        <EditableText
+          label="Phase / Label"
+          value={data.phase}
+          placeholder="e.g. Beta Version, Phase 2, Pilot…"
+          onSave={v => patch({ phase: v })}
+        />
+      </div>
+
+      {/* Progress + Target */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Progress</div>
+          <div className="text-xs text-white">{data.progress}% ({data.doneCount}/{data.taskCount} tasks)</div>
+        </div>
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Target</div>
+          <div className="text-xs text-white">{data.target_date ? fmt(data.target_date) : "Not set"}</div>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -230,12 +483,15 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
       )}
 
       {/* Summary */}
-      {data.summary && (
-        <div className="mb-5">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1.5">Overview</div>
-          <p className="text-xs text-grey leading-relaxed">{data.summary}</p>
-        </div>
-      )}
+      <div className="mb-4">
+        <EditableText
+          label="Overview"
+          value={data.summary}
+          placeholder="Add project summary…"
+          onSave={v => patch({ summary: v })}
+          multiline
+        />
+      </div>
 
       {/* Dependencies */}
       {data.dependencies_text && (
@@ -312,7 +568,7 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
         </div>
       )}
 
-      {/* Ask agent */}
+      {/* Actions */}
       <div className="flex gap-2 pt-4 border-t border-dark-4 mt-4">
         <button
           onClick={() => openPanel("agent", "mbse")}
@@ -326,6 +582,8 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
 }
 
 function AccountPanel({ data }: { data: AccountPanelData }) {
+  const patch = (fields: Record<string, unknown>) => patchPanel("account", data.id, fields);
+
   const STATUS_BADGE: Record<string, string> = {
     identified: "bg-dark-4 text-dark-5",
     contacted:  "bg-amber-500/15 text-amber-400",
@@ -334,6 +592,21 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
     won:        "bg-green-500/20 text-green-300",
     lost:       "bg-red-500/15 text-red-400",
   };
+
+  const statusOptions = [
+    { value: "identified", label: "Identified" },
+    { value: "contacted",  label: "Contacted" },
+    { value: "qualified",  label: "Qualified" },
+    { value: "proposal",   label: "Proposal" },
+    { value: "won",        label: "Won" },
+    { value: "lost",       label: "Lost" },
+  ];
+  const priorityOptions = [
+    { value: "P0", label: "P0 — Critical" },
+    { value: "P1", label: "P1 — High" },
+    { value: "P2", label: "P2 — Medium" },
+    { value: "P3", label: "P3 — Low" },
+  ];
 
   return (
     <>
@@ -344,32 +617,47 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
-        {[
-          { label: "City/Country", value: `${data.city}, ${data.country}` },
-          { label: "ICP Segment",  value: data.icp_segment },
-          { label: "Last Touch",   value: fmt(data.last_touch) },
-          { label: "Revenue Pot.", value: data.revenue_potential > 0 ? `€${(data.revenue_potential / 1000).toFixed(0)}k` : "TBD" },
-        ].map((item) => (
-          <div key={item.label} className="bg-dark-3 rounded-lg px-3 py-2">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">{item.label}</div>
-            <div className="text-xs text-white">{item.value}</div>
-          </div>
-        ))}
+        <EditableSelect
+          label="Status"
+          value={data.status}
+          options={statusOptions}
+          onSave={v => patch({ status: v })}
+          renderValue={v => <span className={`text-[10px] font-bold uppercase ${STATUS_BADGE[v]?.split(" ")[1] || "text-white"}`}>{v}</span>}
+        />
+        <EditableSelect
+          label="Priority"
+          value={data.priority}
+          options={priorityOptions}
+          onSave={v => patch({ priority: v })}
+        />
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">City/Country</div>
+          <div className="text-xs text-white">{data.city}, {data.country}</div>
+        </div>
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Revenue Pot.</div>
+          <div className="text-xs text-white">{data.revenue_potential > 0 ? `€${(data.revenue_potential / 1000).toFixed(0)}k` : "TBD"}</div>
+        </div>
       </div>
 
-      {data.next_action && (
-        <div className="mb-4 px-3 py-2.5 bg-gold/10 border border-gold/20 rounded-lg">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-gold mb-1">Next Action</div>
-          <div className="text-xs text-white">{data.next_action}</div>
-        </div>
-      )}
+      <div className="mb-3">
+        <EditableText
+          label="Next Action"
+          value={data.next_action}
+          placeholder="What's the next step with this account?"
+          onSave={v => patch({ next_action: v })}
+        />
+      </div>
 
-      {data.notes && (
-        <div className="mb-5">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1.5">Notes</div>
-          <p className="text-xs text-grey leading-relaxed">{data.notes}</p>
-        </div>
-      )}
+      <div className="mb-4">
+        <EditableText
+          label="Notes"
+          value={data.notes}
+          placeholder="Add notes about this account…"
+          onSave={v => patch({ notes: v })}
+          multiline
+        />
+      </div>
 
       {data.contacts.length > 0 && (
         <div className="mb-5">
@@ -404,6 +692,16 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
 }
 
 function MilestonePanel({ data }: { data: MilestonePanelData }) {
+  const patch = (fields: Record<string, unknown>) => patchPanel("milestone", data.id, fields);
+
+  const statusOptions = [
+    { value: "pending", label: "Pending" },
+    { value: "active",  label: "Active" },
+    { value: "done",    label: "Done" },
+    { value: "at_risk", label: "At Risk" },
+    { value: "overdue", label: "Overdue" },
+  ];
+
   const STATUS_COLORS: Record<string, string> = {
     done:    "text-green-400",
     active:  "text-blue-400",
@@ -421,6 +719,22 @@ function MilestonePanel({ data }: { data: MilestonePanelData }) {
             {fmt(data.target_date)}
           </span>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <EditableSelect
+          label="Status"
+          value={data.status}
+          options={statusOptions}
+          onSave={v => patch({ status: v })}
+          renderValue={v => <span className={STATUS_COLORS[v] || "text-white"}>{v.toUpperCase()}</span>}
+        />
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Target Date</div>
+          <div className={`text-xs ${isOverdue(data.target_date, data.status) ? "text-red-400" : "text-white"}`}>
+            {fmt(data.target_date)}
+          </div>
+        </div>
       </div>
 
       {data.project && (
@@ -448,6 +762,8 @@ function MilestonePanel({ data }: { data: MilestonePanelData }) {
 }
 
 function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type: PanelType, id: string) => void }) {
+  const patch = (fields: Record<string, unknown>) => patchPanel("task", data.id, fields);
+
   const today = new Date().toISOString().split("T")[0];
   const overdue = data.due_date && data.due_date < today && data.status !== "done";
   const daysOverdue = overdue && data.due_date
@@ -460,6 +776,13 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
     done:        "bg-green-500/15 text-green-400",
     blocked:     "bg-red-500/15 text-red-400",
   };
+
+  const statusOptions = [
+    { value: "todo",        label: "Todo" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "done",        label: "Done" },
+    { value: "blocked",     label: "Blocked" },
+  ];
 
   return (
     <>
@@ -481,22 +804,33 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
         )}
       </div>
 
-      {/* Meta grid */}
+      {/* Editable meta grid */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        {[
-          { label: "Due Date",   value: data.due_date ? fmt(data.due_date) : "Not set",
-            highlight: overdue ? "text-red-400" : "text-white" },
-          { label: "Effort",     value: data.effort_days > 0 ? `${data.effort_days}d` : "—" },
-          { label: "Assignee",   value: data.assignee || "Unassigned" },
-          { label: "Sprint",     value: data.sprint_name || "—" },
-        ].map((item) => (
-          <div key={item.label} className="bg-dark-3 rounded-lg px-3 py-2">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">{item.label}</div>
-            <div className={`text-xs ${"highlight" in item && item.highlight ? item.highlight : "text-white"}`}>
-              {item.value}
-            </div>
+        <EditableSelect
+          label="Status"
+          value={data.status}
+          options={statusOptions}
+          onSave={v => patch({ status: v })}
+          renderValue={v => <span className={`text-[10px] font-bold uppercase ${STATUS_BADGE[v]?.split(" ")[1] || "text-white"}`}>{v.replace("_"," ")}</span>}
+        />
+        <div className="bg-dark-3 rounded-lg px-3 py-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Due Date</div>
+          <div className={`text-xs ${overdue ? "text-red-400" : "text-white"}`}>
+            {data.due_date ? fmt(data.due_date) : "Not set"}
           </div>
-        ))}
+        </div>
+        <EditableText
+          label="Assignee"
+          value={data.assignee}
+          placeholder="Assign to…"
+          onSave={v => patch({ assignee: v })}
+        />
+        <EditableText
+          label="Sprint"
+          value={data.sprint_name}
+          placeholder="Sprint name"
+          onSave={v => patch({ sprint_name: v })}
+        />
       </div>
 
       {/* Stage */}
@@ -530,7 +864,7 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
           <div className="flex gap-2 items-start px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
             <span className="text-base">🔴</span>
             <p className="text-xs text-red-300 leading-relaxed">
-              This task is {daysOverdue}d past due. Mark it done, reassign it, or reschedule it in the Sprint Board.
+              This task is {daysOverdue}d past due. Use the Status field above to mark it done, or update the sprint.
             </p>
           </div>
         )}
@@ -543,7 +877,7 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
         {data.status === "todo" && !overdue && (
           <div className="flex gap-2 items-start px-3 py-2.5 bg-dark-3 border border-dark-4 rounded-lg">
             <span className="text-base">📋</span>
-            <p className="text-xs text-grey leading-relaxed">Task is queued. Start it when ready — update status to In Progress.</p>
+            <p className="text-xs text-grey leading-relaxed">Task is queued. Set Status to In Progress when you start.</p>
           </div>
         )}
         {data.status === "done" && (
@@ -558,12 +892,21 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
 }
 
 function DecisionPanel({ data }: { data: DecisionPanelData }) {
+  const patch = (fields: Record<string, unknown>) => patchPanel("decision", data.id, fields);
+
   const STATUS_BADGE: Record<string, string> = {
     pending:  "bg-amber-500/15 text-amber-400",
     approved: "bg-green-500/15 text-green-400",
     rejected: "bg-red-500/15 text-red-400",
     deferred: "bg-dark-4 text-dark-5",
   };
+
+  const statusOptions = [
+    { value: "pending",  label: "Pending" },
+    { value: "approved", label: "Approved" },
+    { value: "rejected", label: "Rejected" },
+    { value: "deferred", label: "Deferred" },
+  ];
 
   return (
     <>
@@ -581,19 +924,30 @@ function DecisionPanel({ data }: { data: DecisionPanelData }) {
         <p className="text-sm text-white leading-relaxed">{data.text}</p>
       </div>
 
-      {data.owner && (
-        <div className="mb-4">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1">Owner</div>
-          <div className="text-xs text-white">{data.owner}</div>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <EditableSelect
+          label="Status"
+          value={data.status}
+          options={statusOptions}
+          onSave={v => patch({ status: v })}
+        />
+        <EditableText
+          label="Owner"
+          value={data.owner}
+          placeholder="Who decides?"
+          onSave={v => patch({ owner: v })}
+        />
+      </div>
 
-      {data.note && (
-        <div className="mb-4">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1.5">Current Thinking</div>
-          <p className="text-xs text-grey leading-relaxed">{data.note}</p>
-        </div>
-      )}
+      <div className="mb-4">
+        <EditableText
+          label="Current Thinking / Notes"
+          value={data.note}
+          placeholder="Add context, considerations, or rationale…"
+          onSave={v => patch({ note: v })}
+          multiline
+        />
+      </div>
 
       {data.project && (
         <div className="mb-4 px-3 py-2 bg-dark-3 rounded-lg">
@@ -607,18 +961,12 @@ function DecisionPanel({ data }: { data: DecisionPanelData }) {
 
 function NewsPanel({ data }: { data: NewsPanelData }) {
   const CATEGORY_LABELS: Record<string, string> = {
-    automotive: "Automotive",
-    sdv: "SDV",
-    mbse: "MBSE",
-    ai_llm: "AI / LLM",
-    standards: "Standards",
-    market: "Market",
+    automotive: "Automotive", sdv: "SDV", mbse: "MBSE",
+    ai_llm: "AI / LLM", standards: "Standards", market: "Market",
   };
-
   const relevanceColor =
     data.relevance_score >= 75 ? "text-green-400" :
-    data.relevance_score >= 50 ? "text-amber-400" :
-    "text-dark-5";
+    data.relevance_score >= 50 ? "text-amber-400" : "text-dark-5";
 
   return (
     <>
@@ -627,25 +975,16 @@ function NewsPanel({ data }: { data: NewsPanelData }) {
         <span className="px-2 py-0.5 rounded text-[10px] bg-dark-3 text-dark-5">{data.source}</span>
         <span className={`text-[10px] font-bold ${relevanceColor}`}>Relevance: {data.relevance_score}/100</span>
       </div>
-
-      {data.published_at && (
-        <div className="text-[10px] text-dark-5 mb-4">{fmt(data.published_at)}</div>
-      )}
-
+      {data.published_at && <div className="text-[10px] text-dark-5 mb-4">{fmt(data.published_at)}</div>}
       {data.summary && (
         <div className="mb-5">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1.5">AI Summary</div>
           <p className="text-xs text-grey leading-relaxed">{data.summary}</p>
         </div>
       )}
-
       <div className="flex gap-2 pt-4 border-t border-dark-4 mt-4">
-        <a
-          href={data.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 py-2 bg-dark-3 border border-dark-5 text-grey text-xs font-semibold rounded-lg hover:text-white hover:border-grey transition-colors text-center"
-        >
+        <a href={data.url} target="_blank" rel="noopener noreferrer"
+          className="flex-1 py-2 bg-dark-3 border border-dark-5 text-grey text-xs font-semibold rounded-lg hover:text-white hover:border-grey transition-colors text-center">
           Read Source ↗
         </a>
       </div>
@@ -655,19 +994,15 @@ function NewsPanel({ data }: { data: NewsPanelData }) {
 
 function ContentPanel({ data }: { data: ContentPanelData }) {
   const STATUS_BADGE: Record<string, string> = {
-    draft:     "bg-dark-4 text-dark-5",
-    review:    "bg-amber-500/15 text-amber-400",
-    approved:  "bg-blue-500/15 text-blue-400",
-    published: "bg-green-500/15 text-green-400",
+    draft: "bg-dark-4 text-dark-5", review: "bg-amber-500/15 text-amber-400",
+    approved: "bg-blue-500/15 text-blue-400", published: "bg-green-500/15 text-green-400",
   };
-
   return (
     <>
       <div className="flex flex-wrap gap-2 mb-4">
         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_BADGE[data.status]}`}>{data.status}</span>
         <span className="px-2 py-0.5 rounded text-[10px] bg-dark-4 text-grey uppercase">{data.asset_type}</span>
       </div>
-
       <div className="mb-4">
         <div className="flex justify-between text-[10px] mb-1">
           <span className="text-dark-5">Progress</span>
@@ -677,7 +1012,6 @@ function ContentPanel({ data }: { data: ContentPanelData }) {
           <div className="h-full bg-gold rounded-full" style={{ width: `${data.progress_pct}%` }} />
         </div>
       </div>
-
       <div className="grid grid-cols-2 gap-2 mb-4">
         {data.audience && (
           <div className="bg-dark-3 rounded-lg px-3 py-2 col-span-2">
@@ -698,14 +1032,12 @@ function ContentPanel({ data }: { data: ContentPanelData }) {
           </div>
         )}
       </div>
-
       {data.summary && (
         <div className="mb-5">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-1.5">Summary</div>
           <p className="text-xs text-grey leading-relaxed">{data.summary}</p>
         </div>
       )}
-
       <div className="flex gap-2 pt-4 border-t border-dark-4 mt-4">
         <button className="flex-1 py-2 bg-gold/10 border border-gold/30 text-gold text-xs font-semibold rounded-lg hover:bg-gold/20 transition-colors">
           Ask Content Agent ▸
@@ -749,14 +1081,9 @@ export default function DetailPanel() {
   }, [panel, fetchData]);
 
   const typeLabel: Record<string, string> = {
-    project:   "Project",
-    account:   "Account",
-    milestone: "Milestone",
-    decision:  "Decision",
-    news:      "News Item",
-    content:   "Content Asset",
-    task:      "Task",
-    agent:     "Agent",
+    project: "Project", account: "Account", milestone: "Milestone",
+    decision: "Decision", news: "News Item", content: "Content Asset",
+    task: "Task", agent: "Agent",
   };
 
   const getTitle = () => {
@@ -822,7 +1149,7 @@ export default function DetailPanel() {
           {loading && (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className={`h-12 bg-dark-3 rounded-lg animate-pulse`} style={{ opacity: 1 - i * 0.15 }} />
+                <div key={i} className="h-12 bg-dark-3 rounded-lg animate-pulse" style={{ opacity: 1 - i * 0.15 }} />
               ))}
             </div>
           )}
