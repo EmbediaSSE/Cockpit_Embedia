@@ -177,7 +177,8 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
   useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
 
   const handleChange = async (v: string) => {
-    if (v === current) { setEditing(false); return; }
+    // In global edit mode, a "no change" blur should not close the field
+    if (v === current) { if (!editMode) setEditing(false); return; }
     setSaving(true);
     try {
       await onSave(v);
@@ -188,7 +189,8 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
       // revert on error
     } finally {
       setSaving(false);
-      setEditing(false);
+      // In global edit mode, keep field open after saving
+      if (!editMode) setEditing(false);
     }
   };
 
@@ -203,10 +205,10 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
       </div>
       {editing ? (
         <select
-          autoFocus
+          autoFocus={!editMode}
           defaultValue={current}
           onChange={(e) => handleChange(e.target.value)}
-          onBlur={(e) => handleChange(e.target.value)}
+          onBlur={(e) => { if (!editMode) handleChange(e.target.value); }}
           onClick={(e) => e.stopPropagation()}
           className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-gold"
         >
@@ -245,7 +247,7 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
   useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
 
   const commit = async () => {
-    if (draft === current) { setEditing(false); return; }
+    if (draft === current) { if (!editMode) setEditing(false); return; }
     setSaving(true);
     try {
       await onSave(draft);
@@ -256,7 +258,7 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
       setDraft(current);
     } finally {
       setSaving(false);
-      setEditing(false);
+      if (!editMode) setEditing(false);
     }
   };
 
@@ -285,7 +287,7 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
       {editing ? (
         multiline ? (
           <textarea
-            autoFocus
+            autoFocus={!editMode}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onBlur={commit}
@@ -296,7 +298,7 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
           />
         ) : (
           <input
-            autoFocus
+            autoFocus={!editMode}
             type="text"
             value={draft}
             onChange={e => setDraft(e.target.value)}
