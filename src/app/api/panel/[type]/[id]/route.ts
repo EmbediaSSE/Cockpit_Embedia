@@ -158,6 +158,45 @@ export async function GET(
         });
       }
 
+      // ── task ──────────────────────────────────────────────────
+      case "task": {
+        const { data, error } = await supabase
+          .from("wbs_tasks")
+          .select(`
+            id, task_code, name, status, due_date, effort_days, rate, assignee, epic, sprint_name,
+            wbs_stages (
+              id, name,
+              projects (id, code, name, client)
+            )
+          `)
+          .eq("id", id)
+          .single();
+
+        if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+        const stage = (data.wbs_stages as { name: string; projects?: { id: string; code: string; name: string; client: string } } | null);
+
+        return NextResponse.json({
+          type:        "task",
+          id:          data.id,
+          task_code:   data.task_code,
+          name:        data.name,
+          status:      data.status,
+          due_date:    data.due_date,
+          effort_days: data.effort_days,
+          rate:        data.rate,
+          assignee:    data.assignee,
+          epic:        data.epic,
+          sprint_name: data.sprint_name,
+          stage_name:  stage?.name || null,
+          project:     stage?.projects ? {
+            code:   stage.projects.code,
+            name:   stage.projects.name,
+            client: stage.projects.client,
+          } : null,
+        });
+      }
+
       // ── news ──────────────────────────────────────────────────
       case "news": {
         const { data, error } = await supabase

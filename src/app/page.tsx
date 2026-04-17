@@ -278,11 +278,13 @@ function DashboardInner() {
   // Convert Milestone to MilestoneBar format
   const milestonesToBar = milestones.length > 0
     ? milestones.slice(0, 8).map((m) => ({
+        id: m.id,
         label: m.name,
         date: m.target_date
           ? new Date(m.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
           : "TBD",
         status: (m.status === "done" ? "done" : m.status === "active" ? "active" : "pending") as "done" | "active" | "pending",
+        onClick: () => openPanel("milestone", m.id),
       }))
     : [
         { label: "Auth + DB", date: "18 Apr", status: "active" as const },
