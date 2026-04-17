@@ -186,7 +186,7 @@ export async function GET(
 
         if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-        const stage = (data.wbs_stages as { name: string; projects?: { id: string; code: string; name: string; client: string } } | null);
+        const stage = (data.wbs_stages as unknown as { name: string; projects?: { id: string; code: string; name: string; client: string } } | null);
 
         return NextResponse.json({
           type:        "task",

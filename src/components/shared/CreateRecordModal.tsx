@@ -330,10 +330,10 @@ const TYPE_ICONS: Record<RecordType, string> = {
   project: "🗂", task: "✅", milestone: "🏁", decision: "⚖️",
 };
 const QUICK_PLACEHOLDERS: Record<RecordType, string> = {
-  project:   "e.g. "New MBSE agent for Garrett, Consultancy, P1, due June 2026"",
-  task:      "e.g. "Deploy to production in COCKPIT-001, assignee Safouen, 2d effort, due 30 Apr"",
-  milestone: "e.g. "Public launch target 15 May COCKPIT-001, unlocks customer onboarding"",
-  decision:  "e.g. "Go/No-Go MBSE Beta, owner Safouen, deadline end of April"",
+  project:   "e.g. New MBSE agent for Garrett, Consultancy, P1, due June 2026",
+  task:      "e.g. Deploy to production in COCKPIT-001, assignee Safouen, 2d effort, due 30 Apr",
+  milestone: "e.g. Public launch target 15 May COCKPIT-001, unlocks customer onboarding",
+  decision:  "e.g. Go/No-Go MBSE Beta, owner Safouen, deadline end of April",
 };
 
 export default function CreateRecordModal({ defaultType = "project", onClose, onCreated }: CreateRecordModalProps) {
