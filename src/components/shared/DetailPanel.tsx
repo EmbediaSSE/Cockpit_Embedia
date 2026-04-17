@@ -381,17 +381,21 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
 
   const statusOptions = [
     { value: "active",    label: "Active" },
-    { value: "delivered", label: "Delivered" },
+    { value: "completed", label: "Completed" },
     { value: "on_hold",   label: "On Hold" },
-    { value: "planning",  label: "Planning" },
+    { value: "pending",   label: "Pending" },
     { value: "cancelled", label: "Cancelled" },
   ];
   const stageOptions = [
-    { value: "Planning",  label: "Planning" },
+    { value: "Won",       label: "Won" },
     { value: "Active",    label: "Active" },
+    { value: "Planned",   label: "Planned" },
+    { value: "Concept",   label: "Concept" },
+    { value: "Backlog",   label: "Backlog" },
     { value: "Delivered", label: "Delivered" },
-    { value: "On Hold",   label: "On Hold" },
+    { value: "Published", label: "Published" },
     { value: "Closed",    label: "Closed" },
+    { value: "On Hold",   label: "On Hold" },
   ];
   const priorityOptions = [
     { value: "P0", label: "P0 — Critical" },
