@@ -15,6 +15,7 @@ import OrgChartView from "@/components/org/OrgChartView";
 import CriticalNow from "@/components/dashboard/CriticalNow";
 import DailyBriefing from "@/components/dashboard/DailyBriefing";
 import DetailPanel from "@/components/shared/DetailPanel";
+import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
 import { PanelProvider, usePanel } from "@/contexts/PanelContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Project, Milestone } from "@/lib/supabase/types";
@@ -93,6 +94,10 @@ function DashboardInner() {
   const [kpis, setKpis] = useState<KpiData[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [kpiDrill, setKpiDrill] = useState<KpiDrillData | null>(null);
+  // Raw data for drill panels
+  const [allTasks, setAllTasks]     = useState<Array<{ task_code?: string; name?: string; status: string; due_date: string | null }>>([]);
+  const [allAccounts, setAllAccounts] = useState<Array<{ id: string; name?: string; status: string; category?: string; country?: string }>>([]);
   const [kpisLoading, setKpisLoading] = useState(true);
   const [user, setUser] = useState<{ name: string; email: string; role: string }>({
     name: "Safouen",
@@ -134,10 +139,10 @@ function DashboardInner() {
           .order("priority", { ascending: true }),
         supabase
           .from("wbs_tasks")
-          .select("id, status, due_date"),
+          .select("id, task_code, name, status, due_date"),
         supabase
           .from("pipeline_accounts")
-          .select("id, status"),
+          .select("id, name, status, category, country"),
         supabase
           .from("milestones")
           .select("*")
@@ -146,9 +151,16 @@ function DashboardInner() {
       ]);
 
       const allProjects  = (projectsRes.data || []) as Project[];
-      const allTasks     = tasksRes.data || [];
-      const allAccounts  = pipelineRes.data || [];
+      const fetchedTasks = tasksRes.data || [];
+      const fetchedAccounts = pipelineRes.data || [];
       const allMilestones= (milestonesRes.data || []) as Milestone[];
+
+      // Store raw data for KPI drill panels
+      setAllTasks(fetchedTasks);
+      setAllAccounts(fetchedAccounts);
+
+      const allTasks     = fetchedTasks;
+      const allAccounts  = fetchedAccounts;
 
       setProjects(allProjects);
       setMilestones(allMilestones);
@@ -230,8 +242,37 @@ function DashboardInner() {
   }, []);
 
   const handleProjectClick = (project: Project) => {
-    // Open detail panel with project code (API route handles both UUID and code)
     openPanel("project", project.code);
+  };
+
+  const openKpiDrill = (kpiKey: KpiDrillData["kpiKey"]) => {
+    const kpi = kpis.find((k) => {
+      const map: Record<KpiDrillData["kpiKey"], string> = {
+        active_projects: "Active Projects",
+        revenue_pipeline: "Revenue Pipeline",
+        avg_margin: "Avg Margin",
+        bd_pipeline: "BD Pipeline",
+        overdue_items: "Overdue Items",
+        next_milestone: "Next Milestone",
+      };
+      return k.label === map[kpiKey];
+    });
+    setKpiDrill({
+      kpiKey,
+      label: kpi?.label ?? kpiKey,
+      value: kpi?.value ?? "—",
+      sub: kpi?.sub ?? "",
+      projects: projects.map((p) => ({
+        code: p.code, name: p.name, client: p.client, category: p.category,
+        stage: p.stage, status: p.status, priority: p.priority,
+        selling_price: p.selling_price, margin_pct: p.margin_pct, target_date: p.target_date,
+      })),
+      tasks: allTasks,
+      accounts: allAccounts,
+      milestones: milestones.map((m) => ({
+        name: m.name, target_date: m.target_date, status: m.status,
+      })),
+    });
   };
 
   // Convert Milestone to MilestoneBar format
@@ -273,9 +314,24 @@ function DashboardInner() {
                     <div key={i} className="bg-dark-2 rounded-[10px] border border-dark-4 h-20 animate-pulse" />
                   ))
                 ) : (
-                  kpis.map((kpi) => (
-                    <KpiCard key={kpi.label} {...kpi} />
-                  ))
+                  kpis.map((kpi) => {
+                    const keyMap: Record<string, KpiDrillData["kpiKey"]> = {
+                      "Active Projects":  "active_projects",
+                      "Revenue Pipeline": "revenue_pipeline",
+                      "Avg Margin":       "avg_margin",
+                      "BD Pipeline":      "bd_pipeline",
+                      "Overdue Items":    "overdue_items",
+                      "Next Milestone":   "next_milestone",
+                    };
+                    const drillKey = keyMap[kpi.label];
+                    return (
+                      <KpiCard
+                        key={kpi.label}
+                        {...kpi}
+                        onClick={drillKey ? () => openKpiDrill(drillKey) : undefined}
+                      />
+                    );
+                  })
                 )}
               </div>
 
@@ -357,6 +413,9 @@ function DashboardInner() {
 
       {/* Universal Detail Panel */}
       <DetailPanel />
+
+      {/* KPI Drill Panel */}
+      <KpiDrillPanel data={kpiDrill} onClose={() => setKpiDrill(null)} />
     </div>
   );
 }
