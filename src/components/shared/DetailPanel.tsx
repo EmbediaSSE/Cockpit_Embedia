@@ -173,8 +173,8 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
   // Keep in sync if parent data reloads
   useEffect(() => { setCurrent(value); }, [value]);
 
-  // Sync with global edit mode
-  useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
+  // Derive open state: global edit mode OR individual field open
+  const isOpen = !!editMode || editing;
 
   const handleChange = async (v: string) => {
     // In global edit mode, a "no change" blur should not close the field
@@ -195,7 +195,7 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
   };
 
   return (
-    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !editing && setEditing(true)}>
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !isOpen && setEditing(true)}>
       <div className="flex items-center justify-between mb-0.5">
         <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
         <div className="flex items-center gap-1">
@@ -203,10 +203,10 @@ function EditableSelect({ label, value, options, onSave, renderValue, editMode }
           {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
         </div>
       </div>
-      {editing ? (
+      {isOpen ? (
         <select
           autoFocus={!editMode}
-          defaultValue={current}
+          value={current}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={(e) => { if (!editMode) handleChange(e.target.value); }}
           onClick={(e) => e.stopPropagation()}
@@ -243,8 +243,8 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
 
   useEffect(() => { setCurrent(value || ""); setDraft(value || ""); }, [value]);
 
-  // Sync with global edit mode
-  useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
+  // Derive open state: global edit mode OR individual field open
+  const isOpen = !!editMode || editing;
 
   const commit = async () => {
     if (draft === current) { if (!editMode) setEditing(false); return; }
@@ -268,13 +268,13 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
   };
 
   return (
-    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !editing && setEditing(true)}>
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !isOpen && setEditing(true)}>
       <div className="flex items-center justify-between mb-0.5">
         <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
         <div className="flex items-center gap-1">
           {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
           {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
-          {editing && !saving && !saved && (
+          {isOpen && !saving && !saved && (
             <button
               onClick={(e) => { e.stopPropagation(); commit(); }}
               className="text-[9px] text-gold hover:text-white transition-colors font-semibold"
@@ -284,13 +284,13 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
           )}
         </div>
       </div>
-      {editing ? (
+      {isOpen ? (
         multiline ? (
           <textarea
             autoFocus={!editMode}
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
+            onBlur={() => { if (!editMode) commit(); }}
             onKeyDown={handleKey}
             rows={3}
             placeholder={placeholder}
@@ -302,7 +302,7 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
             type="text"
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
+            onBlur={() => { if (!editMode) commit(); }}
             onKeyDown={handleKey}
             placeholder={placeholder}
             className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-gold"
