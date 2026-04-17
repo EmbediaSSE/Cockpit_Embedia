@@ -161,9 +161,10 @@ interface EditableSelectProps {
   options: { label: string; value: string }[];
   onSave: (v: string) => Promise<void>;
   renderValue?: (v: string) => React.ReactNode;
+  editMode?: boolean;
 }
 
-function EditableSelect({ label, value, options, onSave, renderValue }: EditableSelectProps) {
+function EditableSelect({ label, value, options, onSave, renderValue, editMode }: EditableSelectProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -171,6 +172,9 @@ function EditableSelect({ label, value, options, onSave, renderValue }: Editable
 
   // Keep in sync if parent data reloads
   useEffect(() => { setCurrent(value); }, [value]);
+
+  // Sync with global edit mode
+  useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
 
   const handleChange = async (v: string) => {
     if (v === current) { setEditing(false); return; }
@@ -195,17 +199,6 @@ function EditableSelect({ label, value, options, onSave, renderValue }: Editable
         <div className="flex items-center gap-1">
           {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
           {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
-          {!saving && !saved && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setEditing(!editing); }}
-              className="opacity-40 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
-              title="Edit"
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
       {editing ? (
@@ -236,9 +229,10 @@ interface EditableTextProps {
   placeholder?: string;
   onSave: (v: string) => Promise<void>;
   multiline?: boolean;
+  editMode?: boolean;
 }
 
-function EditableText({ label, value, placeholder = "—", onSave, multiline = false }: EditableTextProps) {
+function EditableText({ label, value, placeholder = "—", onSave, multiline = false, editMode }: EditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -246,6 +240,9 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
   const [draft, setDraft] = useState(value || "");
 
   useEffect(() => { setCurrent(value || ""); setDraft(value || ""); }, [value]);
+
+  // Sync with global edit mode
+  useEffect(() => { if (editMode !== undefined) setEditing(editMode); }, [editMode]);
 
   const commit = async () => {
     if (draft === current) { setEditing(false); return; }
@@ -269,26 +266,15 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
   };
 
   return (
-    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors" onClick={() => !editing && setEditing(true)}>
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !editing && setEditing(true)}>
       <div className="flex items-center justify-between mb-0.5">
         <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
         <div className="flex items-center gap-1">
           {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
           {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
-          {!saving && !saved && !editing && (
+          {editing && !saving && !saved && (
             <button
-              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-              className="opacity-40 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
-              title="Edit"
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-              </svg>
-            </button>
-          )}
-          {editing && (
-            <button
-              onClick={commit}
+              onClick={(e) => { e.stopPropagation(); commit(); }}
               className="text-[9px] text-gold hover:text-white transition-colors font-semibold"
             >
               Save
@@ -373,7 +359,7 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 // ── Sub-renderers by panel type ────────────────────────────────
 
-function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: (type: PanelType, id: string) => void }) {
+function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; openPanel: (type: PanelType, id: string) => void; editMode: boolean }) {
   const patch = (fields: Record<string, unknown>) => patchPanel("project", data.id, fields);
 
   const statusOptions = [
@@ -421,6 +407,7 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
           options={statusOptions}
           onSave={v => patch({ status: v, stage: stageOptions.find(s => s.value.toLowerCase() === v)?.value || data.stage })}
           renderValue={v => v.replace("_", " ").toUpperCase()}
+          editMode={editMode}
         />
         <div className="bg-dark-3 rounded-lg px-3 py-2">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Client</div>
@@ -431,12 +418,14 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
           value={data.priority}
           options={priorityOptions}
           onSave={v => patch({ priority: v })}
+          editMode={editMode}
         />
         <EditableSelect
           label="Stage"
           value={data.stage}
           options={stageOptions}
           onSave={v => patch({ stage: v })}
+          editMode={editMode}
         />
       </div>
 
@@ -447,6 +436,7 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
           value={data.phase}
           placeholder="e.g. Beta Version, Phase 2, Pilot…"
           onSave={v => patch({ phase: v })}
+          editMode={editMode}
         />
       </div>
 
@@ -491,6 +481,7 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
           placeholder="Add project summary…"
           onSave={v => patch({ summary: v })}
           multiline
+          editMode={editMode}
         />
       </div>
 
@@ -582,7 +573,7 @@ function ProjectPanel({ data, openPanel }: { data: ProjectPanelData; openPanel: 
   );
 }
 
-function AccountPanel({ data }: { data: AccountPanelData }) {
+function AccountPanel({ data, editMode }: { data: AccountPanelData; editMode: boolean }) {
   const patch = (fields: Record<string, unknown>) => patchPanel("account", data.id, fields);
 
   const STATUS_BADGE: Record<string, string> = {
@@ -624,12 +615,14 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
           options={statusOptions}
           onSave={v => patch({ status: v })}
           renderValue={v => <span className={`text-[10px] font-bold uppercase ${STATUS_BADGE[v]?.split(" ")[1] || "text-white"}`}>{v}</span>}
+          editMode={editMode}
         />
         <EditableSelect
           label="Priority"
           value={data.priority}
           options={priorityOptions}
           onSave={v => patch({ priority: v })}
+          editMode={editMode}
         />
         <div className="bg-dark-3 rounded-lg px-3 py-2">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">City/Country</div>
@@ -647,6 +640,7 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
           value={data.next_action}
           placeholder="What's the next step with this account?"
           onSave={v => patch({ next_action: v })}
+          editMode={editMode}
         />
       </div>
 
@@ -657,6 +651,7 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
           placeholder="Add notes about this account…"
           onSave={v => patch({ notes: v })}
           multiline
+          editMode={editMode}
         />
       </div>
 
@@ -692,7 +687,7 @@ function AccountPanel({ data }: { data: AccountPanelData }) {
   );
 }
 
-function MilestonePanel({ data }: { data: MilestonePanelData }) {
+function MilestonePanel({ data, editMode }: { data: MilestonePanelData; editMode: boolean }) {
   const patch = (fields: Record<string, unknown>) => patchPanel("milestone", data.id, fields);
 
   const statusOptions = [
@@ -729,6 +724,7 @@ function MilestonePanel({ data }: { data: MilestonePanelData }) {
           options={statusOptions}
           onSave={v => patch({ status: v })}
           renderValue={v => <span className={STATUS_COLORS[v] || "text-white"}>{v.toUpperCase()}</span>}
+          editMode={editMode}
         />
         <div className="bg-dark-3 rounded-lg px-3 py-2">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Target Date</div>
@@ -762,7 +758,7 @@ function MilestonePanel({ data }: { data: MilestonePanelData }) {
   );
 }
 
-function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type: PanelType, id: string) => void }) {
+function TaskPanel({ data, openPanel, editMode }: { data: TaskPanelData; openPanel: (type: PanelType, id: string) => void; editMode: boolean }) {
   const patch = (fields: Record<string, unknown>) => patchPanel("task", data.id, fields);
 
   const today = new Date().toISOString().split("T")[0];
@@ -813,6 +809,7 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
           options={statusOptions}
           onSave={v => patch({ status: v })}
           renderValue={v => <span className={`text-[10px] font-bold uppercase ${STATUS_BADGE[v]?.split(" ")[1] || "text-white"}`}>{v.replace("_"," ")}</span>}
+          editMode={editMode}
         />
         <div className="bg-dark-3 rounded-lg px-3 py-2">
           <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Due Date</div>
@@ -825,12 +822,14 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
           value={data.assignee}
           placeholder="Assign to…"
           onSave={v => patch({ assignee: v })}
+          editMode={editMode}
         />
         <EditableText
           label="Sprint"
           value={data.sprint_name}
           placeholder="Sprint name"
           onSave={v => patch({ sprint_name: v })}
+          editMode={editMode}
         />
       </div>
 
@@ -892,7 +891,7 @@ function TaskPanel({ data, openPanel }: { data: TaskPanelData; openPanel: (type:
   );
 }
 
-function DecisionPanel({ data }: { data: DecisionPanelData }) {
+function DecisionPanel({ data, editMode }: { data: DecisionPanelData; editMode: boolean }) {
   const patch = (fields: Record<string, unknown>) => patchPanel("decision", data.id, fields);
 
   const STATUS_BADGE: Record<string, string> = {
@@ -931,12 +930,14 @@ function DecisionPanel({ data }: { data: DecisionPanelData }) {
           value={data.status}
           options={statusOptions}
           onSave={v => patch({ status: v })}
+          editMode={editMode}
         />
         <EditableText
           label="Owner"
           value={data.owner}
           placeholder="Who decides?"
           onSave={v => patch({ owner: v })}
+          editMode={editMode}
         />
       </div>
 
@@ -947,6 +948,7 @@ function DecisionPanel({ data }: { data: DecisionPanelData }) {
           placeholder="Add context, considerations, or rationale…"
           onSave={v => patch({ note: v })}
           multiline
+          editMode={editMode}
         />
       </div>
 
@@ -1055,10 +1057,12 @@ export default function DetailPanel() {
   const [data, setData] = useState<PanelData>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const fetchData = useCallback(async (type: string, id: string) => {
     setLoading(true);
     setError(null);
+    setEditMode(false);
     try {
       const res = await fetch(`/api/panel/${type}/${id}`);
       if (!res.ok) throw new Error(`${res.status}`);
@@ -1078,6 +1082,7 @@ export default function DetailPanel() {
     } else {
       setData(null);
       setError(null);
+      setEditMode(false);
     }
   }, [panel, fetchData]);
 
@@ -1135,14 +1140,43 @@ export default function DetailPanel() {
               <div className="text-[11px] text-dark-5 mt-0.5">{getSubtitle()}</div>
             )}
           </div>
-          <button
-            onClick={closePanel}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-3 text-dark-5 hover:text-white hover:bg-dark-4 transition-colors shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Edit mode toggle — only for types with editable fields */}
+            {data && !["news", "content"].includes(data.type) && (
+              <button
+                onClick={() => setEditMode(m => !m)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  editMode
+                    ? "bg-gold text-dark-1 hover:bg-gold/80"
+                    : "bg-dark-3 text-dark-5 border border-dark-4 hover:border-gold/40 hover:text-gold"
+                }`}
+              >
+                {editMode ? (
+                  <>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+                    </svg>
+                    Edit
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              onClick={closePanel}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-3 text-dark-5 hover:text-white hover:bg-dark-4 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -1163,13 +1197,13 @@ export default function DetailPanel() {
 
           {!loading && !error && data && (
             <>
-              {data.type === "project"   && <ProjectPanel   data={data} openPanel={openPanel} />}
-              {data.type === "account"   && <AccountPanel   data={data} />}
-              {data.type === "milestone" && <MilestonePanel data={data} />}
-              {data.type === "decision"  && <DecisionPanel  data={data} />}
+              {data.type === "project"   && <ProjectPanel   data={data} openPanel={openPanel} editMode={editMode} />}
+              {data.type === "account"   && <AccountPanel   data={data} editMode={editMode} />}
+              {data.type === "milestone" && <MilestonePanel data={data} editMode={editMode} />}
+              {data.type === "decision"  && <DecisionPanel  data={data} editMode={editMode} />}
               {data.type === "news"      && <NewsPanel      data={data} />}
               {data.type === "content"   && <ContentPanel   data={data} />}
-              {data.type === "task"      && <TaskPanel      data={data} openPanel={openPanel} />}
+              {data.type === "task"      && <TaskPanel      data={data} openPanel={openPanel} editMode={editMode} />}
             </>
           )}
         </div>
