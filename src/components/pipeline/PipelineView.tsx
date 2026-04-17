@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import GTMView from "./GTMView";
 
 interface Account {
   id: string;
@@ -40,6 +41,7 @@ export default function PipelineView() {
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const [activeTab, setActiveTab] = useState<"bd" | "gtm">("bd");
 
   useEffect(() => {
     loadAccounts();
@@ -83,34 +85,64 @@ export default function PipelineView() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-white">BD Pipeline — DACH & Nordics</h2>
-          <p className="text-xs text-grey mt-1">
-            {accounts.length} accounts — {accounts.filter((a) => a.status === "won").length} won,{" "}
-            {accounts.filter((a) => ["qualified", "proposal"].includes(a.status)).length} in progress
-          </p>
-        </div>
-        <div className="flex gap-1 bg-dark-3 rounded-lg p-0.5">
+      {/* Top tab bar: BD Pipeline vs GTM */}
+      <div className="flex items-center gap-1 mb-6">
+        <div className="flex gap-1 bg-dark-3 rounded-lg p-0.5 mr-4">
           <button
-            onClick={() => setViewMode("kanban")}
-            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === "kanban" ? "bg-gold text-dark" : "text-grey hover:text-white"
+            onClick={() => setActiveTab("bd")}
+            className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              activeTab === "bd" ? "bg-gold text-dark" : "text-grey hover:text-white"
             }`}
           >
-            Kanban
+            BD Pipeline
           </button>
           <button
-            onClick={() => setViewMode("table")}
-            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === "table" ? "bg-gold text-dark" : "text-grey hover:text-white"
+            onClick={() => setActiveTab("gtm")}
+            className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              activeTab === "gtm" ? "bg-gold text-dark" : "text-grey hover:text-white"
             }`}
           >
-            Table
+            GTM Content
           </button>
         </div>
+
+        {/* BD-only controls */}
+        {activeTab === "bd" && (
+          <div className="flex items-center justify-between flex-1">
+            <div>
+              <h2 className="text-xl font-bold text-white">BD Pipeline — DACH & Nordics</h2>
+              <p className="text-xs text-grey mt-1">
+                {accounts.length} accounts — {accounts.filter((a) => a.status === "won").length} won,{" "}
+                {accounts.filter((a) => ["qualified", "proposal"].includes(a.status)).length} in progress
+              </p>
+            </div>
+            <div className="flex gap-1 bg-dark-3 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "kanban" ? "bg-gold text-dark" : "text-grey hover:text-white"
+                }`}
+              >
+                Kanban
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "table" ? "bg-gold text-dark" : "text-grey hover:text-white"
+                }`}
+              >
+                Table
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* GTM tab */}
+      {activeTab === "gtm" && <GTMView />}
+
+      {/* BD tab */}
+      {activeTab === "bd" && <div>
 
       {viewMode === "kanban" ? (
         /* ── Kanban Board ──────────────────────────────── */
@@ -366,6 +398,7 @@ export default function PipelineView() {
           </div>
         </div>
       )}
+      </div>}
     </div>
   );
 }
