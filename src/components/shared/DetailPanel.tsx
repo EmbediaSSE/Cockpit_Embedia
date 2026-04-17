@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { usePanel } from "@/contexts/PanelContext";
 import type { PanelType } from "@/lib/supabase/types";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type RecordType = "project" | "task" | "milestone" | "decision";
@@ -362,12 +362,12 @@ export default function CreateRecordModal({ defaultType = "project", onClose, on
 
   const handleQuickParse = () => {
     if (!quickText.trim()) return;
-    let parsed: Record<string, string> = {};
-    if (type === "project")   parsed = parseProject(quickText) as Record<string, string>;
-    if (type === "task")      parsed = parseTask(quickText) as Record<string, string>;
-    if (type === "milestone") parsed = parseMilestone(quickText) as Record<string, string>;
-    if (type === "decision")  parsed = parseDecision(quickText) as Record<string, string>;
-    // Convert nulls to empty strings
+    let parsed: Record<string, unknown> = {};
+    if (type === "project")   parsed = parseProject(quickText) as Record<string, unknown>;
+    if (type === "task")      parsed = parseTask(quickText) as Record<string, unknown>;
+    if (type === "milestone") parsed = parseMilestone(quickText) as Record<string, unknown>;
+    if (type === "decision")  parsed = parseDecision(quickText) as Record<string, unknown>;
+    // Convert all values to strings (nulls → "")
     const cleaned: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed)) { cleaned[k] = v == null ? "" : String(v); }
     setFormValues(cleaned);
