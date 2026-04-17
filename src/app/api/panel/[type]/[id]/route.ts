@@ -61,7 +61,9 @@ export async function GET(
         // Flatten to panel shape
         const allTasks = (data.wbs_stages || []).flatMap((s: { wbs_tasks: unknown[] }) => s.wbs_tasks || []);
         const doneCount = allTasks.filter((t: { status: string }) => t.status === "done").length;
-        const progress  = allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 0;
+        const progress  = data.status === "completed" || data.status === "cancelled"
+          ? (allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 100)
+          : (allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 0);
 
         const stages = (data.wbs_stages || [])
           .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)

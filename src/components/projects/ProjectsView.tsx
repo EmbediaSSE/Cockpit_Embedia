@@ -104,7 +104,7 @@ export default function ProjectsView() {
 
   function getProjectProgress(project: Project) {
     const allTasks = project.wbs_stages.flatMap((s) => s.wbs_tasks);
-    if (allTasks.length === 0) return 0;
+    if (allTasks.length === 0) return (project.status === "completed" || project.status === "cancelled") ? 100 : 0;
     return Math.round((allTasks.filter((t) => t.status === "done").length / allTasks.length) * 100);
   }
 
