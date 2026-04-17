@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import GTMView from "./GTMView";
+import AddAccountModal from "./AddAccountModal";
 
 interface Account {
   id: string;
@@ -42,6 +43,7 @@ export default function PipelineView() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [activeTab, setActiveTab] = useState<"bd" | "gtm">("bd");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     loadAccounts();
@@ -116,23 +118,34 @@ export default function PipelineView() {
                 {accounts.filter((a) => ["qualified", "proposal"].includes(a.status)).length} in progress
               </p>
             </div>
-            <div className="flex gap-1 bg-dark-3 rounded-lg p-0.5">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setViewMode("kanban")}
-                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  viewMode === "kanban" ? "bg-gold text-dark" : "text-grey hover:text-white"
-                }`}
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold text-dark text-xs font-bold hover:bg-gold/90 transition-colors"
               >
-                Kanban
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Account
               </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  viewMode === "table" ? "bg-gold text-dark" : "text-grey hover:text-white"
-                }`}
-              >
-                Table
-              </button>
+              <div className="flex gap-1 bg-dark-3 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode("kanban")}
+                  className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === "kanban" ? "bg-gold text-dark" : "text-grey hover:text-white"
+                  }`}
+                >
+                  Kanban
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === "table" ? "bg-gold text-dark" : "text-grey hover:text-white"
+                  }`}
+                >
+                  Table
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -227,8 +240,12 @@ export default function PipelineView() {
                   ))}
 
                   {stageAccounts.length === 0 && (
-                    <div className="text-center py-8 text-dark-5 text-xs border border-dashed border-dark-4 rounded-lg">
-                      No accounts
+                    <div
+                      onClick={() => setShowAddModal(true)}
+                      className="text-center py-8 text-dark-5 text-xs border border-dashed border-dark-4 rounded-lg cursor-pointer hover:border-gold/40 hover:text-grey transition-all group"
+                    >
+                      <div className="text-lg mb-1 group-hover:scale-110 transition-transform">+</div>
+                      Add account
                     </div>
                   )}
                 </div>
@@ -292,6 +309,17 @@ export default function PipelineView() {
       )}
 
       {/* ── Account Detail Drawer ──────────────────── */}
+      {/* ── Add Account Modal ─────────────────────── */}
+      {showAddModal && (
+        <AddAccountModal
+          onClose={() => setShowAddModal(false)}
+          onAdded={() => {
+            setShowAddModal(false);
+            loadAccounts();
+          }}
+        />
+      )}
+
       {selectedAccount && (
         <div className="fixed inset-0 z-[200] flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedAccount(null)} />
