@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 interface HeaderProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  onNewRecord?: () => void;
   userName: string;
   userEmail?: string;
   userRole?: string;
@@ -23,7 +24,7 @@ const NAV_ITEMS = [
   { id: "intelligence", label: "Intelligence" },
 ];
 
-export default function Header({ activeView, onViewChange, userName, userEmail, userRole }: HeaderProps) {
+export default function Header({ activeView, onViewChange, onNewRecord, userName, userEmail, userRole }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -94,6 +95,20 @@ export default function Header({ activeView, onViewChange, userName, userEmail, 
           </button>
         ))}
       </nav>
+
+      {/* New record button */}
+      {onNewRecord && (
+        <button
+          onClick={onNewRecord}
+          className="flex items-center gap-1.5 px-4 py-2 bg-gold text-dark-1 text-xs font-bold rounded-lg hover:bg-gold/90 transition-colors"
+          title="Create new record (⌘K)"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New
+        </button>
+      )}
 
       {/* User menu */}
       <div className="relative" ref={menuRef}>

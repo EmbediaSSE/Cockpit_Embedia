@@ -16,6 +16,7 @@ import CriticalNow from "@/components/dashboard/CriticalNow";
 import DailyBriefing from "@/components/dashboard/DailyBriefing";
 import DetailPanel from "@/components/shared/DetailPanel";
 import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
+import CreateRecordModal from "@/components/shared/CreateRecordModal";
 import { PanelProvider, usePanel } from "@/contexts/PanelContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Project, Milestone } from "@/lib/supabase/types";
@@ -99,6 +100,7 @@ function DashboardInner() {
   const [allTasks, setAllTasks]     = useState<Array<{ task_code?: string; name?: string; status: string; due_date: string | null }>>([]);
   const [allAccounts, setAllAccounts] = useState<Array<{ id: string; name?: string; status: string; category?: string; country?: string }>>([]);
   const [kpisLoading, setKpisLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string; role: string }>({
     name: "Safouen",
     email: "",
@@ -299,6 +301,7 @@ function DashboardInner() {
         <Header
           activeView={activeView}
           onViewChange={setActiveView}
+          onNewRecord={() => setShowCreateModal(true)}
           userName={user.name}
           userEmail={user.email}
           userRole={user.role}
@@ -418,6 +421,18 @@ function DashboardInner() {
 
       {/* KPI Drill Panel */}
       <KpiDrillPanel data={kpiDrill} onClose={() => setKpiDrill(null)} />
+
+      {/* Create Record Modal */}
+      {showCreateModal && (
+        <CreateRecordModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(_type, _data) => {
+            setShowCreateModal(false);
+            // Reload dashboard data so new records appear immediately
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
