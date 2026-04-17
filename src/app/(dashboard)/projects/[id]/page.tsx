@@ -26,27 +26,31 @@ const SEED_PROJECT: ProjectDetail = {
   selling_price: 30000,
   margin_pct: 83,
   target_date: "2025-06-30",
+  function_area: "Operations",
+  phase: null,
+  risks_summary: [],
+  dependencies_text: null,
   created_at: "2025-01-15T00:00:00Z",
   updated_at: "2025-04-10T00:00:00Z",
   stages: [
     {
       id: "s1", project_id: "a1000000-0000-0000-0000-000000000001", name: "Requirements Analysis", sort_order: 1,
       wbs_tasks: [
-        { id: "t1", stage_id: "s1", task_code: "CB-T01", name: "Stakeholder interviews", effort_days: 2, rate: 1200, status: "done", assignee: "Safouen", due_date: "2025-04-01", created_at: "", updated_at: "" },
-        { id: "t2", stage_id: "s1", task_code: "CB-T02", name: "Item type mapping", effort_days: 3, rate: 1200, status: "done", assignee: "Safouen", due_date: "2025-04-05", created_at: "", updated_at: "" },
+        { id: "t1", stage_id: "s1", task_code: "CB-T01", name: "Stakeholder interviews", effort_days: 2, rate: 1200, status: "done", assignee: "Safouen", due_date: "2025-04-01", epic: null, sprint_name: null, created_at: "", updated_at: "" },
+        { id: "t2", stage_id: "s1", task_code: "CB-T02", name: "Item type mapping", effort_days: 3, rate: 1200, status: "done", assignee: "Safouen", due_date: "2025-04-05", epic: null, sprint_name: null, created_at: "", updated_at: "" },
       ],
     },
     {
       id: "s2", project_id: "a1000000-0000-0000-0000-000000000001", name: "Configuration", sort_order: 2,
       wbs_tasks: [
-        { id: "t3", stage_id: "s2", task_code: "CB-T03", name: "Workflow configuration", effort_days: 5, rate: 1200, status: "in_progress", assignee: "Safouen", due_date: "2025-04-20", created_at: "", updated_at: "" },
-        { id: "t4", stage_id: "s2", task_code: "CB-T04", name: "Traceability rules", effort_days: 3, rate: 1200, status: "todo", assignee: "Safouen", due_date: "2025-04-25", created_at: "", updated_at: "" },
+        { id: "t3", stage_id: "s2", task_code: "CB-T03", name: "Workflow configuration", effort_days: 5, rate: 1200, status: "in_progress", assignee: "Safouen", due_date: "2025-04-20", epic: null, sprint_name: null, created_at: "", updated_at: "" },
+        { id: "t4", stage_id: "s2", task_code: "CB-T04", name: "Traceability rules", effort_days: 3, rate: 1200, status: "todo", assignee: "Safouen", due_date: "2025-04-25", epic: null, sprint_name: null, created_at: "", updated_at: "" },
       ],
     },
     {
       id: "s3", project_id: "a1000000-0000-0000-0000-000000000001", name: "Testing & Handover", sort_order: 3,
       wbs_tasks: [
-        { id: "t5", stage_id: "s3", task_code: "CB-T05", name: "UAT and handover", effort_days: 4, rate: 1200, status: "todo", assignee: "Safouen", due_date: "2025-05-10", created_at: "", updated_at: "" },
+        { id: "t5", stage_id: "s3", task_code: "CB-T05", name: "UAT and handover", effort_days: 4, rate: 1200, status: "todo", assignee: "Safouen", due_date: "2025-05-10", epic: null, sprint_name: null, created_at: "", updated_at: "" },
       ],
     },
   ],

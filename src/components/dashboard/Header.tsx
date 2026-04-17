@@ -14,11 +14,13 @@ interface HeaderProps {
 }
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "projects", label: "Projects" },
-  { id: "pipeline", label: "Pipeline" },
-  { id: "org", label: "Organisation" },
-  { id: "sprint", label: "Sprint" },
+  { id: "dashboard",    label: "Dashboard" },
+  { id: "projects",     label: "Projects" },
+  { id: "pipeline",     label: "Pipeline" },
+  { id: "roadmap",      label: "Roadmap" },
+  { id: "sprint",       label: "Sprint" },
+  { id: "org",          label: "Organisation" },
+  { id: "intelligence", label: "Intelligence" },
 ];
 
 export default function Header({ activeView, onViewChange, userName, userEmail, userRole }: HeaderProps) {

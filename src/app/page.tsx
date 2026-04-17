@@ -12,10 +12,26 @@ import UserManagementView from "@/components/settings/UserManagementView";
 import ProjectsView from "@/components/projects/ProjectsView";
 import PipelineView from "@/components/pipeline/PipelineView";
 import OrgChartView from "@/components/org/OrgChartView";
+import CriticalNow from "@/components/dashboard/CriticalNow";
+import DailyBriefing from "@/components/dashboard/DailyBriefing";
+import DetailPanel from "@/components/shared/DetailPanel";
+import { PanelProvider, usePanel } from "@/contexts/PanelContext";
 import { createClient } from "@/lib/supabase/client";
-import type { Project } from "@/lib/supabase/types";
+import type { Project, Milestone } from "@/lib/supabase/types";
 
-// ── KPI type ──────────────────────────────────────────────────────
+// ── Lazy-loaded views (heavy) ─────────────────────────────────
+import dynamic from "next/dynamic";
+const RoadmapView     = dynamic(() => import("@/components/roadmap/RoadmapView"),      { loading: () => <ViewPlaceholder label="Loading Roadmap…" /> });
+const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardView"),   { loading: () => <ViewPlaceholder label="Loading Sprint Board…" /> });
+const IntelligenceView= dynamic(() => import("@/components/intelligence/IntelligenceView"), { loading: () => <ViewPlaceholder label="Loading Intelligence…" /> });
+
+function ViewPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="text-center py-20 text-grey text-sm">{label}</div>
+  );
+}
+
+// ── KPI type ──────────────────────────────────────────────────
 interface KpiData {
   label: string;
   value: string;
@@ -28,56 +44,55 @@ const SEED_PROJECTS: Project[] = [
     id: "1", code: "CB-TME-001", name: "Codebeamer RM Configuration", client: "Toyota Motor Europe",
     category: "Consultancy", stage: "Won", status: "active", priority: "P0",
     summary: "Requirements management tool configuration", selling_price: 30000, margin_pct: 83,
+    function_area: "Operations", phase: null, risks_summary: [], dependencies_text: null,
     target_date: "2025-06-30", created_at: "2025-01-15T00:00:00Z", updated_at: "2025-04-10T00:00:00Z",
   },
   {
     id: "2", code: "MBSE-001", name: "AI Agent — MBSE", client: "Embedia",
     category: "Product", stage: "Active", status: "active", priority: "P0",
     summary: "On-prem MBSE reasoning agent", selling_price: 0, margin_pct: 0,
+    function_area: "Product", phase: "Sprint 1", risks_summary: [], dependencies_text: null,
     target_date: "2025-09-30", created_at: "2025-03-01T00:00:00Z", updated_at: "2025-04-15T00:00:00Z",
   },
   {
     id: "3", code: "WP-001", name: "MBSE Adoption Roadmap", client: "Embedia",
     category: "Publishing", stage: "Active", status: "active", priority: "P1",
     summary: "White paper on MBSE adoption for mechatronic enterprises", selling_price: 0, margin_pct: 0,
+    function_area: "ThoughtLeadership", phase: null, risks_summary: [], dependencies_text: null,
     target_date: "2025-04-21", created_at: "2025-02-01T00:00:00Z", updated_at: "2025-04-14T00:00:00Z",
   },
   {
     id: "4", code: "FUSA-001", name: "AI Agent — FuSa", client: "Embedia",
     category: "Product", stage: "Planned", status: "pending", priority: "P1",
     summary: "Functional safety reasoning agent (ISO 26262)", selling_price: 0, margin_pct: 0,
+    function_area: "Product", phase: "Planned", risks_summary: [], dependencies_text: null,
     target_date: null, created_at: "2025-03-15T00:00:00Z", updated_at: "2025-04-10T00:00:00Z",
   },
   {
     id: "5", code: "CYBER-001", name: "AI Agent — CyberSec", client: "Embedia",
     category: "Product", stage: "Planned", status: "pending", priority: "P2",
     summary: "Cybersecurity agent (ISO 21434 / R155)", selling_price: 0, margin_pct: 0,
+    function_area: "Product", phase: "Planned", risks_summary: [], dependencies_text: null,
     target_date: null, created_at: "2025-03-15T00:00:00Z", updated_at: "2025-04-10T00:00:00Z",
   },
   {
     id: "6", code: "COCKPIT-001", name: "CEO War Room Cockpit", client: "Embedia",
     category: "Operations", stage: "Active", status: "active", priority: "P0",
     summary: "Web application for cockpit.embedia.io", selling_price: 0, margin_pct: 0,
+    function_area: "Operations", phase: "MVP", risks_summary: [], dependencies_text: null,
     target_date: "2025-05-31", created_at: "2025-04-15T00:00:00Z", updated_at: "2025-04-15T00:00:00Z",
   },
 ];
 
-const SEED_MILESTONES = [
-  { label: "TOGAF Docs", date: "15 Apr", status: "done" as const },
-  { label: "MVP Scaffold", date: "16 Apr", status: "active" as const },
-  { label: "Auth + DB", date: "18 Apr", status: "pending" as const },
-  { label: "Agent Chat Live", date: "22 Apr", status: "pending" as const },
-  { label: "Brand QA", date: "25 Apr", status: "pending" as const },
-  { label: "cockpit.embedia.io", date: "30 Apr", status: "pending" as const },
-];
+// ── Inner component (has access to PanelContext) ───────────────
 
-// ── Component ─────────────────────────────────────────────────────
-
-export default function DashboardPage() {
+function DashboardInner() {
+  const { openPanel } = usePanel();
   const [activeView, setActiveView] = useState("dashboard");
   const [chatOpen, setChatOpen] = useState(false);
   const [kpis, setKpis] = useState<KpiData[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [kpisLoading, setKpisLoading] = useState(true);
   const [user, setUser] = useState<{ name: string; email: string; role: string }>({
     name: "Safouen",
@@ -107,16 +122,15 @@ export default function DashboardPage() {
     loadUser();
   }, []);
 
-  // Fetch live KPIs from Supabase
+  // Fetch live KPIs, projects, and milestones from Supabase
   useEffect(() => {
-    async function loadKpis() {
+    async function loadData() {
       const supabase = createClient();
 
-      // Load projects, tasks, and pipeline in parallel
-      const [projectsRes, tasksRes, pipelineRes] = await Promise.all([
+      const [projectsRes, tasksRes, pipelineRes, milestonesRes] = await Promise.all([
         supabase
           .from("projects")
-          .select("id, code, name, client, category, stage, status, priority, summary, selling_price, margin_pct, target_date, created_at, updated_at")
+          .select("id, code, name, client, category, stage, status, priority, summary, selling_price, margin_pct, target_date, function_area, phase, risks_summary, dependencies_text, created_at, updated_at")
           .order("priority", { ascending: true }),
         supabase
           .from("wbs_tasks")
@@ -124,48 +138,59 @@ export default function DashboardPage() {
         supabase
           .from("pipeline_accounts")
           .select("id, status"),
+        supabase
+          .from("milestones")
+          .select("*")
+          .order("target_date", { ascending: true })
+          .limit(20),
       ]);
 
-      const allProjects = (projectsRes.data || []) as Project[];
-      const allTasks = tasksRes.data || [];
-      const allAccounts = pipelineRes.data || [];
+      const allProjects  = (projectsRes.data || []) as Project[];
+      const allTasks     = tasksRes.data || [];
+      const allAccounts  = pipelineRes.data || [];
+      const allMilestones= (milestonesRes.data || []) as Milestone[];
 
       setProjects(allProjects);
+      setMilestones(allMilestones);
 
       // Compute KPIs
       const activeProjects = allProjects.filter((p) => p.status === "active");
-      const consultancy = activeProjects.filter((p) => p.category === "Consultancy").length;
-      const product = activeProjects.filter((p) => p.category === "Product").length;
+      const consultancy    = activeProjects.filter((p) => p.category === "Consultancy").length;
+      const product        = activeProjects.filter((p) => p.category === "Product").length;
 
-      // Revenue: sum selling_price for won/qualified/active
       const revenueProjects = allProjects.filter((p) =>
         p.selling_price > 0 && ["active", "pending"].includes(p.status)
       );
       const totalRevenue = revenueProjects.reduce((sum, p) => sum + p.selling_price, 0);
 
-      // Avg margin across projects with revenue
       const marginProjects = allProjects.filter((p) => p.margin_pct > 0);
       const avgMargin = marginProjects.length > 0
         ? Math.round(marginProjects.reduce((sum, p) => sum + p.margin_pct, 0) / marginProjects.length)
         : 0;
 
-      // Pipeline accounts in progress
       const pipelineInProgress = allAccounts.filter((a) =>
         ["qualified", "proposal", "contacted"].includes(a.status)
       ).length;
       const pipelineWon = allAccounts.filter((a) => a.status === "won").length;
 
-      // Overdue tasks
       const today = new Date().toISOString().split("T")[0];
       const overdueTasks = allTasks.filter(
         (t) => t.due_date && t.due_date < today && t.status !== "done"
       ).length;
 
+      // Days to next pending milestone
+      const nextMilestone = allMilestones.find(
+        (m) => m.status !== "done" && m.target_date && m.target_date >= today
+      );
+      const daysToMilestone = nextMilestone?.target_date
+        ? Math.ceil((new Date(nextMilestone.target_date).getTime() - new Date(today).getTime()) / 86400000)
+        : null;
+
       setKpis([
         {
           label: "Active Projects",
           value: String(activeProjects.length),
-          sub: `${consultancy} consultancy, ${product} product`,
+          sub: `${consultancy} consultancy · ${product} product`,
           accent: "gold",
         },
         {
@@ -183,7 +208,7 @@ export default function DashboardPage() {
         {
           label: "BD Pipeline",
           value: String(allAccounts.length),
-          sub: `${pipelineWon} won, ${pipelineInProgress} in progress`,
+          sub: `${pipelineWon} won · ${pipelineInProgress} in progress`,
           accent: "blue",
         },
         {
@@ -192,20 +217,41 @@ export default function DashboardPage() {
           sub: overdueTasks === 0 ? "All on track" : `${overdueTasks} task${overdueTasks !== 1 ? "s" : ""} past due`,
           accent: overdueTasks > 0 ? "red" : "green",
         },
+        {
+          label: "Next Milestone",
+          value: daysToMilestone !== null ? `${daysToMilestone}d` : "—",
+          sub: nextMilestone ? nextMilestone.name : "No upcoming milestones",
+          accent: daysToMilestone !== null && daysToMilestone <= 3 ? "red" : "gold",
+        },
       ]);
       setKpisLoading(false);
     }
-    loadKpis();
+    loadData();
   }, []);
 
   const handleProjectClick = (project: Project) => {
-    // TODO: navigate to /projects/[id] detail view
-    console.log("Navigate to project:", project.code);
+    // Open detail panel with project code (API route handles both UUID and code)
+    openPanel("project", project.code);
   };
+
+  // Convert Milestone to MilestoneBar format
+  const milestonesToBar = milestones.length > 0
+    ? milestones.slice(0, 8).map((m) => ({
+        label: m.name,
+        date: m.target_date
+          ? new Date(m.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+          : "TBD",
+        status: (m.status === "done" ? "done" : m.status === "active" ? "active" : "pending") as "done" | "active" | "pending",
+      }))
+    : [
+        { label: "Auth + DB", date: "18 Apr", status: "active" as const },
+        { label: "Detail Panels", date: "22 Apr", status: "pending" as const },
+        { label: "Intelligence", date: "25 Apr", status: "pending" as const },
+        { label: "cockpit.embedia.io", date: "30 Apr", status: "pending" as const },
+      ];
 
   return (
     <div className="flex h-screen bg-dark text-white">
-      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           activeView={activeView}
@@ -216,12 +262,14 @@ export default function DashboardPage() {
         />
 
         <main className="flex-1 overflow-y-auto px-8 py-6">
+
+          {/* ── Dashboard ───────────────────────────────────────── */}
           {activeView === "dashboard" && (
             <>
-              {/* KPI Row */}
-              <div className="grid grid-cols-5 gap-4 mb-2">
+              {/* KPI Strip — 6 cards */}
+              <div className="grid grid-cols-6 gap-3 mb-2">
                 {kpisLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
+                  Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="bg-dark-2 rounded-[10px] border border-dark-4 h-20 animate-pulse" />
                   ))
                 ) : (
@@ -231,13 +279,17 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Milestones */}
-              <SectionTitle>Cockpit Deployment Milestones</SectionTitle>
+              {/* Critical Now */}
+              <SectionTitle>Critical Now</SectionTitle>
+              <CriticalNow onItemClick={(type, id) => openPanel(type as "decision" | "project", id)} />
+
+              {/* Enterprise Milestones */}
+              <SectionTitle>Enterprise Milestones</SectionTitle>
               <div className="bg-dark-2 rounded-[10px] border border-dark-4 px-6 py-2 mb-2">
-                <MilestoneBar milestones={SEED_MILESTONES} />
+                <MilestoneBar milestones={milestonesToBar} />
               </div>
 
-              {/* Projects */}
+              {/* Portfolio */}
               <SectionTitle>Portfolio — Active Workstreams</SectionTitle>
               <div className="bg-dark-2 rounded-[10px] border border-dark-4 overflow-hidden">
                 <div className="flex items-center px-3 py-2 text-[9px] font-bold uppercase tracking-[1.5px] text-dark-5 border-b border-dark-4">
@@ -256,14 +308,18 @@ export default function DashboardPage() {
                 ))}
               </div>
 
+              {/* Daily Briefing */}
+              <SectionTitle>Daily Briefing</SectionTitle>
+              <DailyBriefing />
+
               {/* Quick Actions */}
               <SectionTitle>Quick Actions</SectionTitle>
               <div className="grid grid-cols-4 gap-3">
                 {[
-                  { icon: "📋", label: "Daily Briefing", desc: "Ask Chief of Staff" },
-                  { icon: "🤝", label: "Pipeline Status", desc: "Ask BizDev Agent" },
-                  { icon: "✍️", label: "Draft Proposal", desc: "Ask Content Agent" },
-                  { icon: "🏗️", label: "Architecture Review", desc: "Ask MBSE Agent" },
+                  { icon: "📋", label: "Daily Briefing",     desc: "Ask Chief of Staff" },
+                  { icon: "🤝", label: "Pipeline Status",    desc: "Ask BizDev Agent" },
+                  { icon: "✍️", label: "Draft Proposal",     desc: "Ask Content Agent" },
+                  { icon: "🏗️", label: "Architecture Review",desc: "Ask MBSE Agent" },
                 ].map((action) => (
                   <button
                     key={action.label}
@@ -279,24 +335,17 @@ export default function DashboardPage() {
             </>
           )}
 
-          {activeView === "projects" && <ProjectsView />}
-
-          {activeView === "pipeline" && <PipelineView />}
-
-          {activeView === "org" && <OrgChartView />}
-
-          {activeView === "sprint" && (
-            <div className="text-center py-20 text-grey">
-              <div className="text-4xl mb-4">🏃</div>
-              <div className="text-lg font-semibold">Sprint Board</div>
-              <div className="text-sm text-dark-5 mt-2">Task board for MBSE Agent Sprint 1 — coming in next sprint</div>
-            </div>
-          )}
+          {/* ── Other views ─────────────────────────────────────── */}
+          {activeView === "projects"     && <ProjectsView />}
+          {activeView === "pipeline"     && <PipelineView />}
+          {activeView === "roadmap"      && <RoadmapView />}
+          {activeView === "sprint"       && <SprintBoardView />}
+          {activeView === "org"          && <OrgChartView />}
+          {activeView === "intelligence" && <IntelligenceView />}
 
           {activeView === "settings" && (
             <SettingsView onViewChange={setActiveView} />
           )}
-
           {activeView === "admin" && (
             <UserManagementView onViewChange={setActiveView} />
           )}
@@ -305,6 +354,19 @@ export default function DashboardPage() {
 
       {/* Chat Panel */}
       <ChatPanel isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
+
+      {/* Universal Detail Panel */}
+      <DetailPanel />
     </div>
+  );
+}
+
+// ── Root export — wraps with PanelProvider ─────────────────────
+
+export default function DashboardPage() {
+  return (
+    <PanelProvider>
+      <DashboardInner />
+    </PanelProvider>
   );
 }
