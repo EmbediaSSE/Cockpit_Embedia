@@ -189,16 +189,16 @@ function EditableSelect({ label, value, options, onSave, renderValue }: Editable
   };
 
   return (
-    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative">
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors cursor-pointer" onClick={() => !editing && setEditing(true)}>
       <div className="flex items-center justify-between mb-0.5">
         <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
         <div className="flex items-center gap-1">
           {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
-          {saved  && <span className="text-[9px] text-status-green">✓ saved</span>}
+          {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
           {!saving && !saved && (
             <button
-              onClick={() => setEditing(!editing)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
+              onClick={(e) => { e.stopPropagation(); setEditing(!editing); }}
+              className="opacity-40 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
               title="Edit"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -214,6 +214,7 @@ function EditableSelect({ label, value, options, onSave, renderValue }: Editable
           defaultValue={current}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={(e) => handleChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
           className="w-full bg-dark-2 border border-gold/50 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-gold"
         >
           {options.map(o => (
@@ -221,11 +222,7 @@ function EditableSelect({ label, value, options, onSave, renderValue }: Editable
           ))}
         </select>
       ) : (
-        <div
-          className="text-xs text-white cursor-pointer hover:text-gold transition-colors"
-          onClick={() => setEditing(true)}
-          title="Click to edit"
-        >
+        <div className="text-xs text-white group-hover:text-gold/90 transition-colors">
           {renderValue ? renderValue(current) : current}
         </div>
       )}
@@ -272,16 +269,16 @@ function EditableText({ label, value, placeholder = "—", onSave, multiline = f
   };
 
   return (
-    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative">
+    <div className="bg-dark-3 rounded-lg px-3 py-2 group relative border border-transparent hover:border-gold/20 transition-colors" onClick={() => !editing && setEditing(true)}>
       <div className="flex items-center justify-between mb-0.5">
         <div className="text-[9px] font-bold uppercase tracking-widest text-dark-5">{label}</div>
         <div className="flex items-center gap-1">
           {saving && <span className="text-[9px] text-dark-5 animate-pulse">saving…</span>}
-          {saved  && <span className="text-[9px] text-status-green">✓ saved</span>}
+          {saved  && <span className="text-[9px] text-green-400">✓ saved</span>}
           {!saving && !saved && !editing && (
             <button
-              onClick={() => setEditing(true)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
+              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+              className="opacity-40 group-hover:opacity-100 transition-opacity text-dark-5 hover:text-gold"
               title="Edit"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
