@@ -21,10 +21,10 @@ async function createClient() {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { type: string; id: string } }
+  { params }: { params: Promise<{ type: string; id: string }> }
 ) {
   const supabase = await createClient();
-  const { type, id } = params;
+  const { type, id } = await params;
 
   try {
     switch (type) {
