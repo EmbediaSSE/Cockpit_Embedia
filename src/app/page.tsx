@@ -182,10 +182,14 @@ function DashboardInner() {
         ? Math.round(marginProjects.reduce((sum, p) => sum + p.margin_pct, 0) / marginProjects.length)
         : 0;
 
+      // Active = any non-terminal status across all swimlanes
+      const terminalStatuses = ["won", "lost", "churned", "closed_won", "closed_lost", "ambassador"];
       const pipelineInProgress = allAccounts.filter((a) =>
-        ["qualified", "proposal", "contacted"].includes(a.status)
+        !terminalStatuses.includes(a.status)
       ).length;
-      const pipelineWon = allAccounts.filter((a) => a.status === "won").length;
+      const pipelineWon = allAccounts.filter((a) =>
+        ["won", "closed_won", "retained"].includes(a.status)
+      ).length;
 
       const today = new Date().toISOString().split("T")[0];
       const overdueTasks = allTasks.filter(
@@ -222,7 +226,7 @@ function DashboardInner() {
         {
           label: "BD Pipeline",
           value: String(allAccounts.length),
-          sub: `${pipelineWon} won · ${pipelineInProgress} in progress`,
+          sub: `${pipelineWon} won · ${pipelineInProgress} active`,
           accent: "blue",
         },
         {

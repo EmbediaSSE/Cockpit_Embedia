@@ -3,19 +3,42 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+type Swimlane = "customer" | "investor" | "ecosystem";
+
 interface AddAccountModalProps {
   onClose: () => void;
   onAdded: () => void;
+  defaultSwimlane?: Swimlane;
 }
 
-const STAGES = [
-  { id: "identified", label: "Identified" },
-  { id: "contacted", label: "Contacted" },
-  { id: "qualified", label: "Qualified" },
-  { id: "proposal", label: "Proposal" },
-  { id: "won", label: "Won" },
-  { id: "lost", label: "Lost" },
-];
+const SWIMLANE_STAGES: Record<Swimlane, { id: string; label: string }[]> = {
+  customer: [
+    { id: "target",   label: "Target" },
+    { id: "engaged",  label: "Engaged" },
+    { id: "proposal", label: "Proposal" },
+    { id: "active",   label: "Active" },
+    { id: "retained", label: "Retained" },
+    { id: "churned",  label: "Churned" },
+  ],
+  investor: [
+    { id: "identified",    label: "Identified" },
+    { id: "submitted",     label: "Submitted" },
+    { id: "due_diligence", label: "Due Diligence" },
+    { id: "term_sheet",    label: "Term Sheet" },
+    { id: "closed_won",    label: "Closed Won" },
+    { id: "closed_lost",   label: "Closed Lost" },
+  ],
+  ecosystem: [
+    { id: "identified",  label: "Identified" },
+    { id: "researched",  label: "Researched" },
+    { id: "applied",     label: "Applied" },
+    { id: "member",      label: "Member" },
+    { id: "ambassador",  label: "Ambassador" },
+  ],
+};
+
+// Keep legacy STAGES for the NL parser fallback
+const STAGES = SWIMLANE_STAGES.customer;
 
 const CATEGORIES = [
   "Tier-1 Supplier",
@@ -135,12 +158,18 @@ function parseNaturalInput(text: string): Partial<AccountForm> {
   return result;
 }
 
-export default function AddAccountModal({ onClose, onAdded }: AddAccountModalProps) {
+export default function AddAccountModal({ onClose, onAdded, defaultSwimlane = "customer" }: AddAccountModalProps) {
   const [mode, setMode] = useState<"form" | "quick">("quick");
   const [quickText, setQuickText] = useState("");
-  const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
+  const [swimlane, setSwimlane] = useState<Swimlane>(defaultSwimlane);
+  const [form, setForm] = useState<AccountForm>({
+    ...EMPTY_FORM,
+    status: SWIMLANE_STAGES[defaultSwimlane][0].id,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const currentStages = SWIMLANE_STAGES[swimlane];
 
   function applyQuickText() {
     if (!quickText.trim()) return;
@@ -171,6 +200,7 @@ export default function AddAccountModal({ onClose, onAdded }: AddAccountModalPro
         website: form.website,
         icp_segment: form.icp_segment,
         status: form.status,
+        swimlane,
         priority: form.priority,
         notes: form.notes,
         next_action: form.next_action,
@@ -197,7 +227,27 @@ export default function AddAccountModal({ onClose, onAdded }: AddAccountModalPro
         <div className="flex items-center justify-between px-6 py-4 border-b border-dark-4">
           <div>
             <h2 className="text-base font-bold text-white">Add Account</h2>
-            <p className="text-[10px] text-dark-5 mt-0.5">New prospect to the BD pipeline</p>
+            {/* Swimlane selector */}
+            <div className="flex gap-1 mt-1.5">
+              {(["customer", "investor", "ecosystem"] as Swimlane[]).map((lane) => (
+                <button
+                  key={lane}
+                  onClick={() => {
+                    setSwimlane(lane);
+                    setForm((prev) => ({ ...prev, status: SWIMLANE_STAGES[lane][0].id }));
+                  }}
+                  className={`px-2.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                    swimlane === lane
+                      ? lane === "customer" ? "bg-amber-500/20 text-amber-400"
+                        : lane === "investor" ? "bg-yellow-400/20 text-yellow-400"
+                        : "bg-cyan-500/20 text-cyan-400"
+                      : "text-dark-5 hover:text-grey"
+                  }`}
+                >
+                  {lane.charAt(0).toUpperCase() + lane.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
           {/* Mode toggle */}
           <div className="flex items-center gap-3">
@@ -314,7 +364,7 @@ export default function AddAccountModal({ onClose, onAdded }: AddAccountModalPro
                     onChange={(e) => handleField("status", e.target.value)}
                     className="w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold/50 appearance-none"
                   >
-                    {STAGES.map((s) => (
+                    {currentStages.map((s) => (
                       <option key={s.id} value={s.id}>{s.label}</option>
                     ))}
                   </select>
