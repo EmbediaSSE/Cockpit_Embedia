@@ -31,6 +31,7 @@ interface Project {
   category: string;
   status: string;
   priority: string;
+  phase: string | null;
   summary: string | null;
   selling_price: number;
   target_date: string | null;
@@ -74,6 +75,39 @@ const PRIORITY_DOT: Record<string, string> = {
   P1: "#F39C12",
   P2: "#3498DB",
   P3: "#3A3A3A",
+};
+
+// Phase badge colours — Consultancy phases get special treatment
+const PHASE_ACCENT: Record<string, string> = {
+  // Consultancy
+  RFQ:          "rgba(52,152,219,0.15)",
+  Submitted:    "rgba(243,156,18,0.15)",
+  Negotiation:  "rgba(243,156,18,0.20)",
+  Won:          "rgba(39,174,96,0.15)",
+  Discovery:    "rgba(245,166,35,0.12)",
+  Delivery:     "rgba(245,166,35,0.20)",
+  Invoiced:     "rgba(39,174,96,0.20)",
+  Lost:         "rgba(231,76,60,0.15)",
+  // Product
+  Concept:      "rgba(142,68,173,0.15)",
+  PoC:          "rgba(142,68,173,0.20)",
+  Alpha:        "rgba(52,152,219,0.15)",
+  Beta:         "rgba(52,152,219,0.20)",
+  Live:         "rgba(39,174,96,0.20)",
+  Deprecated:   "rgba(58,58,58,0.40)",
+  // Generic
+  Draft:        "rgba(52,152,219,0.12)",
+  Review:       "rgba(243,156,18,0.15)",
+  Published:    "rgba(39,174,96,0.20)",
+};
+
+const PHASE_TEXT: Record<string, string> = {
+  RFQ:         "#3498DB", Submitted:   "#F39C12", Negotiation: "#F39C12",
+  Won:         "#27AE60", Discovery:   "#F5A623", Delivery:    "#F5A623",
+  Invoiced:    "#27AE60", Lost:        "#E74C3C",
+  Concept:     "#8E44AD", PoC:         "#8E44AD", Alpha:       "#3498DB",
+  Beta:        "#3498DB", Live:        "#27AE60", Deprecated:  "#3A3A3A",
+  Draft:       "#3498DB", Review:      "#F39C12", Published:   "#27AE60",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,9 +191,21 @@ function ProjectCard({
       </div>
 
       {/* Name */}
-      <div className="text-xs font-semibold text-white leading-tight mb-2 line-clamp-2">
+      <div className="text-xs font-semibold text-white leading-tight mb-1.5 line-clamp-2">
         {project.name}
       </div>
+
+      {/* Phase badge */}
+      {project.phase && (
+        <div className="mb-1.5">
+          <span
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+            style={{ background: PHASE_ACCENT[project.phase] ?? "#2A2A2A", color: PHASE_TEXT[project.phase] ?? "#8E8E93" }}
+          >
+            {project.phase}
+          </span>
+        </div>
+      )}
 
       {/* Progress bar */}
       {total > 0 && (

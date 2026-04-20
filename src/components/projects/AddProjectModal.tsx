@@ -24,6 +24,15 @@ const STATUSES   = [
   { id: "completed", label: "Delivered" },
 ];
 
+// Category-aware phase ladders
+const PHASES: Record<string, string[]> = {
+  Consultancy: ["RFQ", "Submitted", "Negotiation", "Won", "Discovery", "Delivery", "Invoiced", "Lost"],
+  Product:     ["Concept", "PoC", "Alpha", "Beta", "Live", "Deprecated"],
+  Operations:  ["Discovery", "Build", "Testing", "Live", "Maintenance"],
+  BD:          ["Identified", "Researched", "Outreach", "Active", "Closed"],
+  Publishing:  ["Outline", "Draft", "Review", "Approved", "Published"],
+};
+
 const FIELD = "w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-sm text-white placeholder:text-dark-5 focus:outline-none focus:border-gold/60 transition-colors";
 const LABEL = "block text-[10px] font-bold uppercase tracking-wider mb-1.5";
 
@@ -193,12 +202,40 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
             </div>
             <div>
               <label className={LABEL} style={{ color: "#8E8E93" }}>Phase</label>
+              {/* Datalist gives dropdown suggestions while still allowing free text */}
               <input
                 className={FIELD}
-                placeholder="Discovery"
+                list={`phases-${form.category}`}
+                placeholder={PHASES[form.category]?.[0] ?? "e.g. Discovery"}
                 value={form.phase}
                 onChange={e => set("phase", e.target.value)}
               />
+              <datalist id={`phases-${form.category}`}>
+                {(PHASES[form.category] ?? []).map(p => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+              {/* Phase ladder hint */}
+              {PHASES[form.category] && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {PHASES[form.category].map((p, i) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => set("phase", p)}
+                      className="text-[8px] px-1.5 py-0.5 rounded transition-all"
+                      style={{
+                        background: form.phase === p ? "#F5A623" : "#2A2A2A",
+                        color:      form.phase === p ? "#0D0D0D" : "#3A3A3A",
+                        fontWeight: form.phase === p ? 700 : 400,
+                      }}
+                    >
+                      {i > 0 && <span style={{ marginRight: 2, opacity: 0.4 }}>›</span>}
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
