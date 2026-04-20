@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePanel } from "@/contexts/PanelContext";
+import AddProjectModal from "./AddProjectModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WbsTask {
@@ -305,6 +306,8 @@ function SwimlaneRow({
 export default function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const [dragging, setDragging] = useState<{
     id: string;
     category: string;
@@ -418,21 +421,38 @@ export default function ProjectsView() {
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3">
-          {COLUMNS.map(col => (
-            <div key={col.id} className="flex items-center gap-1">
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: col.dotColor }}
-              />
-              <span className="text-[10px]" style={{ color: "#3A3A3A" }}>
-                {col.label}
-              </span>
-            </div>
-          ))}
+        <div className="flex items-center gap-4">
+          {/* Legend */}
+          <div className="flex items-center gap-3">
+            {COLUMNS.map(col => (
+              <div key={col.id} className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: col.dotColor }} />
+                <span className="text-[10px]" style={{ color: "#3A3A3A" }}>{col.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* New project button */}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+            style={{ background: "#F5A623", color: "#0D0D0D" }}
+          >
+            <span className="text-base leading-none">+</span>
+            New Project
+          </button>
         </div>
       </div>
+
+      {/* Add project modal */}
+      {showAddModal && (
+        <AddProjectModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={(newProject) => {
+            setProjects(prev => [...prev, newProject as unknown as Project]);
+          }}
+        />
+      )}
 
       {/* Board — horizontally scrollable */}
       <div className="overflow-x-auto pb-4">
