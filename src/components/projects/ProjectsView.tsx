@@ -2,75 +2,318 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { usePanel } from "@/contexts/PanelContext";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface WbsTask {
   id: string;
-  task_code: string;
-  name: string;
-  effort_days: number;
-  rate: number;
   status: string;
-  assignee: string | null;
+  effort_days: number;
   due_date: string | null;
 }
-
 interface WbsStage {
   id: string;
   name: string;
   sort_order: number;
   wbs_tasks: WbsTask[];
 }
-
+interface Risk {
+  id: string;
+  level: string;
+  status: string;
+}
 interface Project {
   id: string;
   code: string;
   name: string;
   client: string;
   category: string;
-  stage: string;
   status: string;
   priority: string;
-  summary: string;
+  summary: string | null;
   selling_price: number;
-  margin_pct: number;
   target_date: string | null;
   wbs_stages: WbsStage[];
   project_risks: Risk[];
 }
 
-interface Risk {
+// ─── Board config ─────────────────────────────────────────────────────────────
+interface SwimlaneDef {
   id: string;
-  level: string;
-  description: string;
-  mitigation: string | null;
-  status: string;
+  label: string;
+  icon: string;
+  accent: string;
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  P0: "bg-red-500",
-  P1: "bg-amber-500",
-  P2: "bg-blue-500",
-  P3: "bg-dark-5",
+const SWIMLANES: SwimlaneDef[] = [
+  { id: "Product",     label: "AI Products",         icon: "🤖", accent: "#8E44AD" },
+  { id: "Consultancy", label: "Client Engagements",  icon: "🔧", accent: "#3498DB" },
+  { id: "Operations",  label: "Internal / Platform", icon: "⚙️", accent: "#27AE60" },
+  { id: "BD",          label: "Business Dev",        icon: "📈", accent: "#F5A623" },
+  { id: "Publishing",  label: "Content & IP",        icon: "📝", accent: "#E74C3C" },
+];
+
+interface ColumnDef {
+  id: string;
+  label: string;
+  textColor: string;
+  dotColor: string;
+}
+
+const COLUMNS: ColumnDef[] = [
+  { id: "pending",   label: "Planned",   textColor: "#3A3A3A", dotColor: "#3A3A3A" },
+  { id: "active",    label: "Active",    textColor: "#3498DB", dotColor: "#3498DB" },
+  { id: "on_hold",   label: "On Hold",   textColor: "#F39C12", dotColor: "#F39C12" },
+  { id: "completed", label: "Delivered", textColor: "#27AE60", dotColor: "#27AE60" },
+  { id: "cancelled", label: "Cancelled", textColor: "#6B6B6B", dotColor: "#6B6B6B" },
+];
+
+const PRIORITY_DOT: Record<string, string> = {
+  P0: "#E74C3C",
+  P1: "#F39C12",
+  P2: "#3498DB",
+  P3: "#3A3A3A",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  todo: "bg-dark-5",
-  in_progress: "bg-blue-500",
-  done: "bg-green-500",
-  blocked: "bg-red-500",
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getProgress(p: Project): { pct: number; done: number; total: number } {
+  const tasks = p.wbs_stages.flatMap(s => s.wbs_tasks);
+  if (!tasks.length) {
+    const pct = p.status === "completed" || p.status === "cancelled" ? 100 : 0;
+    return { pct, done: 0, total: 0 };
+  }
+  const done = tasks.filter(t => t.status === "done").length;
+  return { pct: Math.round(done / tasks.length * 100), done, total: tasks.length };
+}
 
-const RISK_COLORS: Record<string, string> = {
-  low: "text-green-400",
-  medium: "text-amber-400",
-  high: "text-red-400",
-  critical: "text-red-500",
-};
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
+function isOverdue(d: string, status: string): boolean {
+  return status !== "done" && status !== "completed" && status !== "cancelled" && new Date(d) < new Date();
+}
+
+// ─── Project card ─────────────────────────────────────────────────────────────
+function ProjectCard({
+  project,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  project: Project;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const { openPanel } = usePanel();
+  const { pct, done, total } = getProgress(project);
+  const openRisks = project.project_risks.filter(r => r.status === "open");
+  const criticalRisk = openRisks.some(r => r.level === "high" || r.level === "critical");
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => { e.stopPropagation(); onDragStart(); }}
+      onDragEnd={onDragEnd}
+      onClick={() => openPanel("project", project.id)}
+      className="rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing
+        hover:border-dark-5 transition-all select-none"
+      style={{
+        background: "#1E1E1E",
+        border: "1px solid #2A2A2A",
+        opacity: isDragging ? 0.4 : 1,
+        transform: isDragging ? "scale(0.96)" : "scale(1)",
+        transition: "opacity 0.15s, transform 0.15s",
+      }}
+    >
+      {/* Top row: priority dot · code · risk badge */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <div
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ background: PRIORITY_DOT[project.priority] ?? "#3A3A3A" }}
+        />
+        <span className="text-[9px] font-mono flex-1 truncate" style={{ color: "#3A3A3A" }}>
+          {project.code}
+        </span>
+        <span
+          className="text-[9px] font-bold px-1 py-0.5 rounded"
+          style={{
+            background: `${PRIORITY_DOT[project.priority]}22`,
+            color: PRIORITY_DOT[project.priority] ?? "#3A3A3A",
+          }}
+        >
+          {project.priority}
+        </span>
+        {openRisks.length > 0 && (
+          <span
+            className="text-[9px] font-bold"
+            style={{ color: criticalRisk ? "#E74C3C" : "#F39C12" }}
+          >
+            ⚠ {openRisks.length}
+          </span>
+        )}
+      </div>
+
+      {/* Name */}
+      <div className="text-xs font-semibold text-white leading-tight mb-2 line-clamp-2">
+        {project.name}
+      </div>
+
+      {/* Progress bar */}
+      {total > 0 && (
+        <div className="mb-2">
+          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "#2A2A2A" }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, background: "#F5A623" }}
+            />
+          </div>
+          <div className="text-[9px] mt-0.5" style={{ color: "#3A3A3A" }}>
+            {pct}% · {done}/{total} tasks
+          </div>
+        </div>
+      )}
+
+      {/* Footer: client · date · revenue */}
+      <div className="flex items-center gap-2">
+        <span className="text-[9px] flex-1 truncate" style={{ color: "#8E8E93" }}>
+          {project.client}
+        </span>
+        {project.target_date && (
+          <span
+            className="text-[9px] font-medium"
+            style={{ color: isOverdue(project.target_date, project.status) ? "#E74C3C" : "#3A3A3A" }}
+          >
+            {fmtDate(project.target_date)}
+          </span>
+        )}
+        {project.selling_price > 0 && (
+          <span className="text-[9px] font-semibold" style={{ color: "#F5A623" }}>
+            €{(project.selling_price / 1000).toFixed(0)}k
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Swimlane row ─────────────────────────────────────────────────────────────
+function SwimlaneRow({
+  lane,
+  projects,
+  dragging,
+  dropTarget,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  lane: SwimlaneDef;
+  projects: Project[];
+  dragging: { id: string; category: string; fromStatus: string } | null;
+  dropTarget: { category: string; status: string } | null;
+  onDragStart: (p: Project) => void;
+  onDragEnd: () => void;
+  onDragOver: (category: string, status: string) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (category: string, status: string) => void;
+}) {
+  const isDraggingInLane = dragging?.category === lane.id;
+
+  return (
+    <div className="flex gap-2 mb-2">
+      {/* Swimlane label */}
+      <div
+        className="flex-shrink-0 flex flex-col justify-start pt-2 pr-3"
+        style={{ width: 140, borderRight: `2px solid ${lane.accent}30` }}
+      >
+        <div
+          className="text-[9px] font-bold uppercase tracking-widest mb-1"
+          style={{ color: lane.accent }}
+        >
+          {lane.icon}
+        </div>
+        <div className="text-[11px] font-semibold text-white leading-tight">{lane.label}</div>
+        <div className="text-[9px] mt-0.5" style={{ color: "#3A3A3A" }}>
+          {projects.length} project{projects.length !== 1 ? "s" : ""}
+        </div>
+      </div>
+
+      {/* Column cells */}
+      {COLUMNS.map(col => {
+        const cards = projects.filter(p => p.status === col.id);
+        const isTarget = dropTarget?.category === lane.id && dropTarget?.status === col.id;
+        const isSameStatus = dragging?.category === lane.id && dragging?.fromStatus === col.id;
+
+        return (
+          <div
+            key={col.id}
+            className="flex-1 min-w-0 rounded-lg p-1.5 transition-all"
+            style={{
+              minHeight: 72,
+              background: isTarget ? "rgba(245,166,35,0.05)" : "rgba(21,21,21,0.4)",
+              border: isTarget
+                ? "1px solid rgba(245,166,35,0.5)"
+                : isDraggingInLane && !isSameStatus
+                ? "1px dashed #2A2A2A"
+                : "1px solid transparent",
+            }}
+            onDragOver={(e) => {
+              if (!dragging || dragging.category !== lane.id) return;
+              e.preventDefault();
+              onDragOver(lane.id, col.id);
+            }}
+            onDragLeave={onDragLeave}
+            onDrop={(e) => { e.preventDefault(); onDrop(lane.id, col.id); }}
+          >
+            <div className="space-y-1.5">
+              {cards.map(project => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isDragging={dragging?.id === project.id}
+                  onDragStart={() => onDragStart(project)}
+                  onDragEnd={onDragEnd}
+                />
+              ))}
+
+              {/* Drop hint when dragging within this lane */}
+              {isDraggingInLane && cards.length === 0 && (
+                <div
+                  className="rounded-md flex items-center justify-center"
+                  style={{
+                    height: 40,
+                    border: "1px dashed #2A2A2A",
+                  }}
+                >
+                  <span className="text-[9px]" style={{ color: "#3A3A3A" }}>
+                    {isTarget ? "Release to move" : "Drop here"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main view ────────────────────────────────────────────────────────────────
 export default function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{
+    id: string;
+    category: string;
+    fromStatus: string;
+  } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    category: string;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -78,220 +321,172 @@ export default function ProjectsView() {
       const { data } = await supabase
         .from("projects")
         .select(`
-          *,
-          wbs_stages (
-            id, name, sort_order,
-            wbs_tasks (id, task_code, name, effort_days, rate, status, assignee, due_date)
-          ),
-          project_risks (id, level, description, mitigation, status)
+          id, code, name, client, category, status, priority,
+          summary, selling_price, target_date,
+          wbs_stages ( id, name, sort_order, wbs_tasks ( id, status, effort_days, due_date ) ),
+          project_risks ( id, level, status )
         `)
         .order("priority", { ascending: true });
 
       if (data) {
-        setProjects(data.map((p: Record<string, unknown>) => ({
-          ...p,
-          wbs_stages: ((p.wbs_stages as WbsStage[]) || []).sort((a: WbsStage, b: WbsStage) => a.sort_order - b.sort_order),
-        })) as Project[]);
+        setProjects(
+          data.map((p: Record<string, unknown>) => ({
+            ...p,
+            wbs_stages: ((p.wbs_stages as WbsStage[]) ?? []).sort(
+              (a: WbsStage, b: WbsStage) => a.sort_order - b.sort_order
+            ),
+          })) as Project[]
+        );
       }
       setLoading(false);
     }
     load();
   }, []);
 
-  if (loading) {
-    return <div className="text-center py-20 text-grey text-sm">Loading projects...</div>;
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+  function handleDragStart(project: Project) {
+    setDragging({ id: project.id, category: project.category, fromStatus: project.status });
   }
 
-  function getProjectProgress(project: Project) {
-    const allTasks = project.wbs_stages.flatMap((s) => s.wbs_tasks);
-    if (allTasks.length === 0) return (project.status === "completed" || project.status === "cancelled") ? 100 : 0;
-    return Math.round((allTasks.filter((t) => t.status === "done").length / allTasks.length) * 100);
+  function handleDragEnd() {
+    setDragging(null);
+    setDropTarget(null);
   }
+
+  function handleDragOver(category: string, status: string) {
+    setDropTarget({ category, status });
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    // Only clear if leaving the cell entirely (not entering a child)
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDropTarget(null);
+    }
+  }
+
+  async function handleDrop(targetCategory: string, targetStatus: string) {
+    if (!dragging || dragging.category !== targetCategory) return;
+    setDragging(null);
+    setDropTarget(null);
+    if (dragging.fromStatus === targetStatus) return;
+
+    const prevStatus = dragging.fromStatus;
+    const projectId = dragging.id;
+
+    // Optimistic update
+    setProjects(prev =>
+      prev.map(p => (p.id === projectId ? { ...p, status: targetStatus } : p))
+    );
+
+    // Persist to Supabase
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("projects")
+      .update({ status: targetStatus })
+      .eq("id", projectId);
+
+    if (error) {
+      console.error("Failed to update project status:", error.message);
+      // Rollback
+      setProjects(prev =>
+        prev.map(p => (p.id === projectId ? { ...p, status: prevStatus } : p))
+      );
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="text-center py-20 text-grey text-sm">Loading projects…</div>
+    );
+  }
+
+  const totalActive = projects.filter(p => p.status === "active").length;
+
+  // Build a catch-all for unmatched categories
+  const knownCategories = new Set(SWIMLANES.map(s => s.id));
+  const otherProjects = projects.filter(p => !knownCategories.has(p.category));
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-white">Project Portfolio</h2>
-          <p className="text-xs text-grey mt-1">
-            {projects.length} projects — {projects.filter((p) => p.status === "active").length} active
+          <p className="text-xs mt-0.5" style={{ color: "#8E8E93" }}>
+            {projects.length} projects · {totalActive} active
           </p>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-3">
+          {COLUMNS.map(col => (
+            <div key={col.id} className="flex items-center gap-1">
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: col.dotColor }}
+              />
+              <span className="text-[10px]" style={{ color: "#3A3A3A" }}>
+                {col.label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="space-y-3">
-        {projects.map((project) => {
-          const isExpanded = expandedProject === project.id;
-          const progress = getProjectProgress(project);
-          const allTasks = project.wbs_stages.flatMap((s) => s.wbs_tasks);
-          const openRisks = project.project_risks.filter((r) => r.status === "open");
+      {/* Board — horizontally scrollable */}
+      <div className="overflow-x-auto pb-4">
+        <div style={{ minWidth: 900 }}>
 
-          return (
-            <div key={project.id} className="bg-dark-2 rounded-xl border border-dark-4 overflow-hidden">
-              {/* Project Header */}
-              <div
-                className="px-5 py-4 cursor-pointer hover:bg-dark-3 transition-colors"
-                onClick={() => setExpandedProject(isExpanded ? null : project.id)}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Priority */}
-                  <div className={`w-2 h-8 rounded-full ${PRIORITY_COLORS[project.priority]}`} />
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-dark-5">{project.code}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${PRIORITY_COLORS[project.priority]}/20 text-white`}>
-                        {project.priority}
-                      </span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-dark-3 text-dark-5 uppercase">
-                        {project.category}
-                      </span>
-                    </div>
-                    <div className="text-sm font-semibold text-white mt-0.5">{project.name}</div>
-                    <div className="text-[10px] text-dark-5 mt-0.5">
-                      {project.client} — {project.stage}
-                      {project.target_date && ` — Due ${new Date(project.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="w-32 text-right">
-                    <div className="text-xs text-grey mb-1">{progress}% complete</div>
-                    <div className="w-full h-1.5 bg-dark-4 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gold rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-dark-5 mt-1">
-                      {allTasks.filter((t) => t.status === "done").length}/{allTasks.length} tasks
-                    </div>
-                  </div>
-
-                  {/* Financials */}
-                  {project.selling_price > 0 && (
-                    <div className="text-right w-24">
-                      <div className="text-sm font-semibold text-gold">
-                        €{(project.selling_price / 1000).toFixed(0)}k
-                      </div>
-                      <div className="text-[10px] text-dark-5">{project.margin_pct}% margin</div>
-                    </div>
-                  )}
-
-                  {/* Risk badge */}
-                  {openRisks.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className={`text-xs font-bold ${
-                        openRisks.some((r) => r.level === "high" || r.level === "critical")
-                          ? "text-red-400"
-                          : "text-amber-400"
-                      }`}>
-                        ⚠ {openRisks.length}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Chevron */}
-                  <svg
-                    className={`w-4 h-4 text-dark-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+          {/* Sticky column headers */}
+          <div className="flex gap-2 mb-3" style={{ paddingLeft: 148 }}>
+            {COLUMNS.map(col => (
+              <div key={col.id} className="flex-1 min-w-0">
+                <div
+                  className="text-[10px] font-bold uppercase tracking-widest text-center py-1.5 px-2 rounded-md"
+                  style={{
+                    background: "#151515",
+                    border: "1px solid #2A2A2A",
+                    color: col.textColor,
+                  }}
+                >
+                  {col.label}
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* Expanded: WBS + Risks */}
-              {isExpanded && (
-                <div className="border-t border-dark-4 px-5 py-4">
-                  {/* Summary */}
-                  {project.summary && (
-                    <p className="text-xs text-grey mb-4 leading-relaxed">{project.summary}</p>
-                  )}
+          {/* Swimlane rows */}
+          {SWIMLANES.map(lane => (
+            <SwimlaneRow
+              key={lane.id}
+              lane={lane}
+              projects={projects.filter(p => p.category === lane.id)}
+              dragging={dragging}
+              dropTarget={dropTarget}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            />
+          ))}
 
-                  {/* WBS Stages */}
-                  {project.wbs_stages.length > 0 ? (
-                    <div className="space-y-4">
-                      {project.wbs_stages.map((stage) => (
-                        <div key={stage.id}>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-gold mb-2">
-                            {stage.name}
-                          </div>
-                          <div className="space-y-1">
-                            {stage.wbs_tasks.map((task) => (
-                              <div key={task.id} className="flex items-center gap-3 px-3 py-2 bg-dark-3 rounded-lg">
-                                <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[task.status]}`} />
-                                <span className="text-[10px] font-mono text-dark-5 w-16">{task.task_code}</span>
-                                <span className="text-xs text-white flex-1">{task.name}</span>
-                                {task.assignee && (
-                                  <span className="text-[10px] text-grey">{task.assignee}</span>
-                                )}
-                                {task.effort_days > 0 && (
-                                  <span className="text-[10px] text-dark-5">{task.effort_days}d</span>
-                                )}
-                                {task.due_date && (
-                                  <span className={`text-[10px] ${
-                                    new Date(task.due_date) < new Date() && task.status !== "done"
-                                      ? "text-red-400"
-                                      : "text-dark-5"
-                                  }`}>
-                                    {new Date(task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                  </span>
-                                )}
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                                  task.status === "done" ? "bg-green-500/15 text-green-400" :
-                                  task.status === "in_progress" ? "bg-blue-500/15 text-blue-400" :
-                                  task.status === "blocked" ? "bg-red-500/15 text-red-400" :
-                                  "bg-dark-4 text-dark-5"
-                                }`}>
-                                  {task.status.replace("_", " ")}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-dark-5 py-4 text-center">No WBS defined yet.</div>
-                  )}
-
-                  {/* Risks */}
-                  {project.project_risks.length > 0 && (
-                    <div className="mt-5 pt-4 border-t border-dark-4">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-dark-5 mb-2">
-                        Risks ({project.project_risks.length})
-                      </div>
-                      <div className="space-y-1.5">
-                        {project.project_risks.map((risk) => (
-                          <div key={risk.id} className="flex items-start gap-2 px-3 py-2 bg-dark-3 rounded-lg">
-                            <span className={`text-xs font-bold uppercase ${RISK_COLORS[risk.level]}`}>
-                              {risk.level}
-                            </span>
-                            <div className="flex-1">
-                              <div className="text-xs text-white">{risk.description}</div>
-                              {risk.mitigation && (
-                                <div className="text-[10px] text-dark-5 mt-1">Mitigation: {risk.mitigation}</div>
-                              )}
-                            </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                              risk.status === "open" ? "bg-amber-500/15 text-amber-400" :
-                              risk.status === "mitigated" ? "bg-green-500/15 text-green-400" :
-                              "bg-dark-4 text-dark-5"
-                            }`}>
-                              {risk.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+          {/* Catch-all: projects with unmapped category */}
+          {otherProjects.length > 0 && (
+            <SwimlaneRow
+              lane={{ id: "__other__", label: "Other", icon: "📁", accent: "#3A3A3A" }}
+              projects={otherProjects}
+              dragging={dragging}
+              dropTarget={dropTarget}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
