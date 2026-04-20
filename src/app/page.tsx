@@ -300,7 +300,7 @@ function DashboardInner() {
       ];
 
   return (
-    <div className="flex h-screen bg-dark text-white">
+    <div className="flex h-[100dvh] bg-dark text-white">
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           activeView={activeView}
@@ -311,13 +311,13 @@ function DashboardInner() {
           userRole={user.role}
         />
 
-        <main className="flex-1 overflow-y-auto px-8 py-6">
+        <main className="flex-1 overflow-y-auto px-4 py-4 lg:px-8 lg:py-6 pb-24 md:pb-6">
 
           {/* ── Dashboard ───────────────────────────────────────── */}
           {activeView === "dashboard" && (
             <>
               {/* KPI Strip — 6 cards */}
-              <div className="grid grid-cols-6 gap-3 mb-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-2">
                 {kpisLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="bg-dark-2 rounded-[10px] border border-dark-4 h-20 animate-pulse" />
@@ -379,7 +379,7 @@ function DashboardInner() {
 
               {/* Quick Actions */}
               <SectionTitle>Quick Actions</SectionTitle>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { icon: "📋", label: "Daily Briefing",     desc: "Ask Chief of Staff" },
                   { icon: "🤝", label: "Pipeline Status",    desc: "Ask BizDev Agent" },

@@ -1,0 +1,43 @@
+{
+  "name": "Embedia War Room Cockpit",
+  "short_name": "Cockpit",
+  "description": "Embedia.io CEO operational command centre",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0D0D0D",
+  "theme_color": "#0D0D0D",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Projects",
+      "url": "/?view=projects",
+      "description": "Project portfolio"
+    },
+    {
+      "name": "Pipeline",
+      "url": "/?view=pipeline",
+      "description": "BD pipeline"
+    }
+  ]
+}
