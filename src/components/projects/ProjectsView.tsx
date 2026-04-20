@@ -449,7 +449,10 @@ export default function ProjectsView() {
         <AddProjectModal
           onClose={() => setShowAddModal(false)}
           onCreated={(newProject) => {
-            setProjects(prev => [...prev, newProject as unknown as Project]);
+            setProjects(prev => [
+              ...prev,
+              { ...newProject, wbs_stages: [], project_risks: [] } as unknown as Project,
+            ]);
           }}
         />
       )}
