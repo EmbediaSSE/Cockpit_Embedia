@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import GTMView from "./GTMView";
 import AddAccountModal from "./AddAccountModal";
+import TalentAccountDrawer from "./TalentAccountDrawer";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -460,7 +461,13 @@ export default function PipelineView() {
       )}
 
       {/* ── Account Detail Drawer ────────────────────────────────────────────── */}
-      {selectedAccount && (
+      {selectedAccount && selectedAccount.swimlane === "talent" ? (
+        <TalentAccountDrawer
+          account={selectedAccount}
+          onClose={() => setSelectedAccount(null)}
+          onMove={moveAccount}
+        />
+      ) : selectedAccount ? (
         <AccountDrawer
           account={selectedAccount}
           onClose={() => setSelectedAccount(null)}
@@ -472,7 +479,7 @@ export default function PipelineView() {
           onAddEngagement={addEngagement}
           engSaving={engSaving}
         />
-      )}
+      ) : null}
     </div>
   );
 }
