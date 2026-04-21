@@ -14,6 +14,7 @@ import PipelineView from "@/components/pipeline/PipelineView";
 import OrgChartView from "@/components/org/OrgChartView";
 import CriticalNow from "@/components/dashboard/CriticalNow";
 import DailyBriefing from "@/components/dashboard/DailyBriefing";
+import AdminSwimlane from "@/components/dashboard/AdminSwimlane";
 import DetailPanel from "@/components/shared/DetailPanel";
 import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
 import CreateRecordModal from "@/components/shared/CreateRecordModal";
@@ -372,6 +373,10 @@ function DashboardInner() {
                   />
                 ))}
               </div>
+
+              {/* Admin & Compliance Tasks */}
+              <SectionTitle>Admin &amp; Compliance</SectionTitle>
+              <AdminSwimlane onTaskClick={(task) => openPanel("task", task.code)} />
 
               {/* Daily Briefing */}
               <SectionTitle>Daily Briefing</SectionTitle>

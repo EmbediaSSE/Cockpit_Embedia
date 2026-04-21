@@ -3,7 +3,30 @@
 
 export type UserRole = "admin" | "member";
 
-export type ProjectCategory = "Consultancy" | "Product" | "Publishing" | "BD" | "ProfDevel" | "Operations";
+export type ProjectCategory = "Consultancy" | "Product" | "Publishing" | "BD" | "ProfDevel" | "Operations" | "Admin";
+
+// ── Admin Tasks ───────────────────────────────────────────────
+export type AdminTaskRecurrence = "monthly" | "quarterly" | "annual" | "adhoc";
+export type AdminTaskDueStatus  = "overdue" | "due-soon" | "upcoming" | "done";
+
+export interface AdminTask {
+  id:               string;
+  code:             string;
+  name:             string;
+  description:      string | null;
+  recurrence:       AdminTaskRecurrence;
+  next_due:         string;          // ISO date "YYYY-MM-DD"
+  last_completed:   string | null;   // ISO date
+  priority:         "P0" | "P1" | "P2" | "P3";
+  effort_days:      number;
+  status_override:  "pending" | "done" | "skipped" | null;
+  done_at:          string | null;
+  done_by:          string | null;
+  notes:            string | null;
+  sort_order:       number;
+  created_at:       string;
+  updated_at:       string;
+}
 export type ProjectStage = "Won" | "Active" | "Planned" | "Concept" | "Backlog";
 export type ProjectStatus = "active" | "pending" | "on_hold" | "completed";
 export type Priority = "P0" | "P1" | "P2" | "P3";
