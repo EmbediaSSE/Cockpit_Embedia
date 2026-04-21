@@ -24,8 +24,8 @@ const STATUSES   = [
   { id: "completed", label: "Delivered" },
 ];
 
-// Category-aware phase ladders
-const PHASES: Record<string, string[]> = {
+// Category-aware stage ladders — stage IS the lifecycle tracker
+export const STAGES: Record<string, string[]> = {
   Consultancy: ["RFQ", "Submitted", "Negotiation", "Won", "Discovery", "Delivery", "Invoiced", "Lost"],
   Product:     ["Concept", "PoC", "Alpha", "Beta", "Live", "Deprecated"],
   Operations:  ["Discovery", "Build", "Testing", "Live", "Maintenance"],
@@ -47,7 +47,7 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
     category:      "Product",
     priority:      "P1",
     status:        "active",
-    phase:         "",
+    stage:         STAGES["Product"][0],
     summary:       "",
     target_date:   "",
     selling_price: "",
@@ -55,6 +55,11 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
   });
 
   function set(key: string, value: string) {
+    if (key === "category") {
+      // Reset stage to first stage of new category
+      setForm(prev => ({ ...prev, category: value, stage: STAGES[value]?.[0] ?? "" }));
+      return;
+    }
     setForm(prev => ({ ...prev, [key]: value }));
     // Auto-suggest code from name
     if (key === "name" && !form.code) {
@@ -86,8 +91,7 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
       category:      form.category,
       priority:      form.priority,
       status:        form.status,
-      stage:         "Active",
-      phase:         form.phase.trim() || null,
+      stage:         form.stage,
       summary:       form.summary.trim() || null,
       target_date:   form.target_date || null,
       selling_price: parseFloat(form.selling_price) || 0,
@@ -186,8 +190,8 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
             </div>
           </div>
 
-          {/* Row 3: Priority + Status + Phase */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Row 3: Priority + Status */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={LABEL} style={{ color: "#8E8E93" }}>Priority</label>
               <select className={FIELD} value={form.priority} onChange={e => set("priority", e.target.value)}>
@@ -200,42 +204,28 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
                 {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </div>
-            <div>
-              <label className={LABEL} style={{ color: "#8E8E93" }}>Phase</label>
-              {/* Datalist gives dropdown suggestions while still allowing free text */}
-              <input
-                className={FIELD}
-                list={`phases-${form.category}`}
-                placeholder={PHASES[form.category]?.[0] ?? "e.g. Discovery"}
-                value={form.phase}
-                onChange={e => set("phase", e.target.value)}
-              />
-              <datalist id={`phases-${form.category}`}>
-                {(PHASES[form.category] ?? []).map(p => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
-              {/* Phase ladder hint */}
-              {PHASES[form.category] && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {PHASES[form.category].map((p, i) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => set("phase", p)}
-                      className="text-[8px] px-1.5 py-0.5 rounded transition-all"
-                      style={{
-                        background: form.phase === p ? "#F5A623" : "#2A2A2A",
-                        color:      form.phase === p ? "#0D0D0D" : "#3A3A3A",
-                        fontWeight: form.phase === p ? 700 : 400,
-                      }}
-                    >
-                      {i > 0 && <span style={{ marginRight: 2, opacity: 0.4 }}>›</span>}
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              )}
+          </div>
+
+          {/* Stage — category-aware lifecycle */}
+          <div>
+            <label className={LABEL} style={{ color: "#8E8E93" }}>Stage</label>
+            <div className="flex flex-wrap gap-1.5">
+              {(STAGES[form.category] ?? []).map((s, i) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => set("stage", s)}
+                  className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all"
+                  style={{
+                    background: form.stage === s ? "#F5A623" : "#2A2A2A",
+                    color:      form.stage === s ? "#0D0D0D" : "#6A6A6A",
+                    border:     form.stage === s ? "none" : "1px solid #3A3A3A",
+                  }}
+                >
+                  {i > 0 && <span style={{ opacity: 0.35, fontSize: 9 }}>›</span>}
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
 

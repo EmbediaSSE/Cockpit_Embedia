@@ -31,6 +31,7 @@ interface Project {
   category: string;
   status: string;
   priority: string;
+  stage: string;
   phase: string | null;
   summary: string | null;
   selling_price: number;
@@ -77,7 +78,7 @@ const PRIORITY_DOT: Record<string, string> = {
   P3: "#3A3A3A",
 };
 
-// Phase badge colours — Consultancy phases get special treatment
+// Stage badge colours — one palette covers all categories
 const PHASE_ACCENT: Record<string, string> = {
   // Consultancy
   RFQ:          "rgba(52,152,219,0.15)",
@@ -195,14 +196,14 @@ function ProjectCard({
         {project.name}
       </div>
 
-      {/* Phase badge */}
-      {project.phase && (
+      {/* Stage badge */}
+      {project.stage && (
         <div className="mb-1.5">
           <span
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ background: PHASE_ACCENT[project.phase] ?? "#2A2A2A", color: PHASE_TEXT[project.phase] ?? "#8E8E93" }}
+            style={{ background: PHASE_ACCENT[project.stage] ?? "#2A2A2A", color: PHASE_TEXT[project.stage] ?? "#8E8E93" }}
           >
-            {project.phase}
+            {project.stage}
           </span>
         </div>
       )}

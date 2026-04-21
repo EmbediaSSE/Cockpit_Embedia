@@ -7,7 +7,7 @@ import AddAccountModal from "./AddAccountModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Swimlane = "customer" | "investor" | "ecosystem";
+type Swimlane = "customer" | "investor" | "ecosystem" | "talent";
 
 interface Contact {
   id: string;
@@ -97,9 +97,21 @@ const SWIMLANE_CONFIG: Record<Swimlane, {
       { id: "ambassador",  label: "Ambassador",  dot: "bg-cyan-500", terminal: true },
     ],
   },
+  talent: {
+    label: "Talent",
+    accent: "bg-violet-500",
+    headerBg: "border-violet-500/30 bg-violet-500/5",
+    stages: [
+      { id: "identified",  label: "Identified",  dot: "bg-dark-5" },
+      { id: "researched",  label: "Researched",  dot: "bg-blue-400" },
+      { id: "approached",  label: "Approached",  dot: "bg-amber-500" },
+      { id: "screening",   label: "Screening",   dot: "bg-violet-400" },
+      { id: "placed",      label: "Placed",      dot: "bg-green-500", terminal: true },
+    ],
+  },
 };
 
-const SWIMLANE_ORDER: Swimlane[] = ["customer", "investor", "ecosystem"];
+const SWIMLANE_ORDER: Swimlane[] = ["customer", "investor", "ecosystem", "talent"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -205,6 +217,7 @@ export default function PipelineView() {
   const customerActive = accounts.filter(a => a.swimlane === "customer" && !["churned"].includes(a.status)).length;
   const investorActive = accounts.filter(a => a.swimlane === "investor" && !["closed_won","closed_lost"].includes(a.status)).length;
   const ecosystemActive = accounts.filter(a => a.swimlane === "ecosystem" && a.status !== "ambassador").length;
+  const talentActive = accounts.filter(a => a.swimlane === "talent" && a.status !== "placed").length;
 
   if (loading) {
     return <div className="text-center py-20 text-grey text-sm">Loading pipeline...</div>;
@@ -233,7 +246,8 @@ export default function PipelineView() {
                 {totalAccounts} accounts —&nbsp;
                 <span className="text-amber-400">{customerActive} customers</span> ·&nbsp;
                 <span className="text-yellow-400">{investorActive} investors</span> ·&nbsp;
-                <span className="text-cyan-400">{ecosystemActive} ecosystem</span>
+                <span className="text-cyan-400">{ecosystemActive} ecosystem</span> ·&nbsp;
+                <span className="text-violet-400">{talentActive} talent</span>
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -510,6 +524,10 @@ function KanbanCard({ account, lane, stages, onSelect, onMove }: {
 
       {lane === "ecosystem" && account.icp_segment && (
         <div className="text-[9px] text-cyan-400 mt-1.5 truncate">{account.icp_segment}</div>
+      )}
+
+      {lane === "talent" && account.icp_segment && (
+        <div className="text-[9px] text-violet-400 mt-1.5 truncate">{account.icp_segment}</div>
       )}
 
       <div className="flex items-center gap-2 mt-2">

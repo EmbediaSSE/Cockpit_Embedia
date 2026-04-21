@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Swimlane = "customer" | "investor" | "ecosystem";
+type Swimlane = "customer" | "investor" | "ecosystem" | "talent";
 
 interface AddAccountModalProps {
   onClose: () => void;
@@ -35,6 +35,13 @@ const SWIMLANE_STAGES: Record<Swimlane, { id: string; label: string }[]> = {
     { id: "member",      label: "Member" },
     { id: "ambassador",  label: "Ambassador" },
   ],
+  talent: [
+    { id: "identified",  label: "Identified" },
+    { id: "researched",  label: "Researched" },
+    { id: "approached",  label: "Approached" },
+    { id: "screening",   label: "Screening" },
+    { id: "placed",      label: "Placed" },
+  ],
 };
 
 // Keep legacy STAGES for the NL parser fallback
@@ -47,6 +54,10 @@ const CATEGORIES = [
   "Startup",
   "Investor",
   "Machinery",
+  "Talent — ASIC Engineering",
+  "Talent — Embedded Software",
+  "Talent — Systems Engineering",
+  "Talent — Other",
   "Other",
 ];
 
@@ -229,7 +240,7 @@ export default function AddAccountModal({ onClose, onAdded, defaultSwimlane = "c
             <h2 className="text-base font-bold text-white">Add Account</h2>
             {/* Swimlane selector */}
             <div className="flex gap-1 mt-1.5">
-              {(["customer", "investor", "ecosystem"] as Swimlane[]).map((lane) => (
+              {(["customer", "investor", "ecosystem", "talent"] as Swimlane[]).map((lane) => (
                 <button
                   key={lane}
                   onClick={() => {
@@ -240,6 +251,7 @@ export default function AddAccountModal({ onClose, onAdded, defaultSwimlane = "c
                     swimlane === lane
                       ? lane === "customer" ? "bg-amber-500/20 text-amber-400"
                         : lane === "investor" ? "bg-yellow-400/20 text-yellow-400"
+                        : lane === "talent" ? "bg-violet-500/20 text-violet-400"
                         : "bg-cyan-500/20 text-cyan-400"
                       : "text-dark-5 hover:text-grey"
                   }`}

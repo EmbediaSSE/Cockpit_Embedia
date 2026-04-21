@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { usePanel } from "@/contexts/PanelContext";
 import type { PanelType } from "@/lib/supabase/types";
+import { STAGES } from "@/components/projects/AddProjectModal";
 
 // ── Panel data types ────────────────────────────────────────────
 
@@ -371,17 +372,9 @@ function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; o
     { value: "pending",   label: "Pending" },
     { value: "cancelled", label: "Cancelled" },
   ];
-  const stageOptions = [
-    { value: "Won",       label: "Won" },
-    { value: "Active",    label: "Active" },
-    { value: "Planned",   label: "Planned" },
-    { value: "Concept",   label: "Concept" },
-    { value: "Backlog",   label: "Backlog" },
-    { value: "Delivered", label: "Delivered" },
-    { value: "Published", label: "Published" },
-    { value: "Closed",    label: "Closed" },
-    { value: "On Hold",   label: "On Hold" },
-  ];
+  // Category-aware stage options — sourced from the same STAGES map used in AddProjectModal
+  const stageOptions = (STAGES[data.category] ?? Object.values(STAGES).flat())
+    .map(s => ({ value: s, label: s }));
   const priorityOptions = [
     { value: "P0", label: "P0 — Critical" },
     { value: "P1", label: "P1 — High" },
@@ -397,8 +390,7 @@ function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; o
           {data.priority}
         </span>
         <span className="px-2 py-0.5 rounded text-[10px] bg-dark-4 text-grey uppercase">{data.category}</span>
-        <span className="px-2 py-0.5 rounded text-[10px] bg-dark-4 text-grey">{data.stage}</span>
-        {data.phase && <span className="px-2 py-0.5 rounded text-[10px] bg-dark-3 text-dark-5">{data.phase}</span>}
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold" style={{ background: "#2A2A2A", color: "#F5A623" }}>{data.stage}</span>
       </div>
 
       {/* Editable fields — 2×2 */}
@@ -407,7 +399,7 @@ function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; o
           label="Status"
           value={data.status}
           options={statusOptions}
-          onSave={v => patch({ status: v, stage: stageOptions.find(s => s.value.toLowerCase() === v)?.value || data.stage })}
+          onSave={v => patch({ status: v })}
           renderValue={v => v.replace("_", " ").toUpperCase()}
           editMode={editMode}
         />
@@ -427,17 +419,6 @@ function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; o
           value={data.stage}
           options={stageOptions}
           onSave={v => patch({ stage: v })}
-          editMode={editMode}
-        />
-      </div>
-
-      {/* Phase / Label */}
-      <div className="mb-3">
-        <EditableText
-          label="Phase / Label"
-          value={data.phase}
-          placeholder="e.g. Beta Version, Phase 2, Pilot…"
-          onSave={v => patch({ phase: v })}
           editMode={editMode}
         />
       </div>
