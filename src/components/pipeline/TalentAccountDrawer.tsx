@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 // ── TalentAccountDrawer ────────────────────────────────────────────────────────
 // Rich prospect-card drawer for Talent swimlane accounts.
 // Parses structured JSON from the account's `notes` field and renders
 // the full prospect card layout (header · info grid · roles · candidates · timeline).
-// Supports adding new candidates (via PDF, URL, or pasted text) and roles
-// (via URL or pasted job description) with Claude AI enrichment.
+// Candidates and roles are added manually here, or via Cowork PDF upload.
 
 interface TalentAccount {
   id: string;
@@ -44,21 +43,6 @@ interface RichNotes {
 
 function parseNotes(raw: string): RichNotes | null {
   try { return JSON.parse(raw) as RichNotes; } catch { return null; }
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Strip "data:application/pdf;base64," prefix
-      resolve(result.split(",")[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ── Status badge ───────────────────────────────────────────────────────────────
@@ -104,7 +88,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Add Candidate form ─────────────────────────────────────────────────────────
+// ── Add Candidate form (manual) ────────────────────────────────────────────────
+
+const CLUSTERS = ["Design", "Test / Validation", "Layout", "Verification", "FAE", "Other"];
 
 function AddCandidateForm({
   onSave,
@@ -113,236 +99,114 @@ function AddCandidateForm({
   onSave: (c: Candidate) => void;
   onCancel: () => void;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [pdfFile, setPdfFile]   = useState<File | null>(null);
-  const [url, setUrl]           = useState("");
-  const [rawText, setRawText]   = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
-  const [preview, setPreview]   = useState<Candidate | null>(null);
-
-  // Editable preview fields
   const [name, setName]         = useState("");
   const [role, setRole]         = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [match, setMatch]       = useState<Candidate["match"]>("medium");
   const [targets, setTargets]   = useState("");
   const [summary, setSummary]   = useState("");
   const [tagsStr, setTagsStr]   = useState("");
   const [alert, setAlert]       = useState("");
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (f && f.type === "application/pdf") setPdfFile(f);
-    else if (f) setError("Please select a PDF file.");
-  }
-
-  async function analyze() {
-    if (!pdfFile && !url.trim() && !rawText.trim()) {
-      setError("Upload a PDF, paste a URL, or paste profile text.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setPreview(null);
-    try {
-      let pdfBase64: string | undefined;
-      if (pdfFile) pdfBase64 = await fileToBase64(pdfFile);
-
-      const res = await fetch("/api/talent/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: url.trim() || undefined,
-          rawText: rawText.trim() || undefined,
-          pdfBase64,
-          type: "candidate",
-        }),
-      });
-      const json = await res.json();
-      if (json.error) { setError(json.error); return; }
-      const c: Candidate = json.candidate;
-      setPreview(c);
-      setName(c.name || "");
-      setRole(c.role || "");
-      setMatch(c.match || "medium");
-      setTargets(c.target_roles || "");
-      setSummary(c.summary || "");
-      setTagsStr((c.tags || []).join(", "));
-      setAlert(c.alert || "");
-    } catch {
-      setError("Request failed. Check connection.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [error, setError]       = useState("");
 
   function confirm() {
-    if (!name) { setError("Name is required."); return; }
+    if (!name.trim()) { setError("Name is required."); return; }
     onSave({
-      name,
-      role,
+      name: name.trim(),
+      role: role.trim(),
       match,
-      target_roles: targets,
-      summary,
+      target_roles: targets.trim(),
+      summary: summary.trim(),
       tags: tagsStr.split(",").map(t => t.trim()).filter(Boolean),
-      ...(url.trim() ? { linkedin_url: url.trim() } : {}),
-      ...(alert ? { alert } : {}),
+      ...(linkedinUrl.trim() ? { linkedin_url: linkedinUrl.trim() } : {}),
+      ...(alert.trim() ? { alert: alert.trim() } : {}),
     });
   }
 
   return (
-    <div className="bg-dark-2 border border-violet-500/30 rounded-xl p-5 space-y-4">
-      <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-violet-400 mb-1">
+    <div className="bg-dark-2 border border-violet-500/30 rounded-xl p-5 space-y-3">
+      <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-violet-400">
         Add Candidate
       </div>
 
-      {/* ── Input options ── */}
-      <div className="space-y-2">
-        {/* PDF upload */}
-        <div
-          onClick={() => fileRef.current?.click()}
-          className={`flex items-center gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-all ${
-            pdfFile
-              ? "border-violet-500/50 bg-violet-500/10"
-              : "border-dashed border-dark-4 hover:border-violet-500/40 hover:bg-dark-3"
-          }`}
-        >
-          <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <div>
-            <div className="text-xs font-semibold text-white">
-              {pdfFile ? pdfFile.name : "Upload LinkedIn PDF"}
-            </div>
-            <div className="text-[10px] text-dark-5">
-              {pdfFile ? "PDF ready for analysis" : "LinkedIn → Save as PDF → Upload here"}
-            </div>
-          </div>
-          {pdfFile && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (fileRef.current) fileRef.current.value = ""; }}
-              className="ml-auto text-dark-5 hover:text-red-400 transition-colors"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        <input ref={fileRef} type="file" accept="application/pdf" onChange={onFileChange} className="hidden" />
+      <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2 text-[10px] text-violet-300 leading-relaxed">
+        💡 For PDF profiles — upload in Cowork and the data will be added automatically.
+      </div>
 
-        <div className="flex items-center gap-2 text-dark-5">
-          <div className="flex-1 h-px bg-dark-4" />
-          <span className="text-[9px] uppercase tracking-wider">or</span>
-          <div className="flex-1 h-px bg-dark-4" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Full Name *</label>
+          <input value={name} onChange={e => setName(e.target.value)}
+            placeholder="e.g. Ahmed Ben Ali"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
         </div>
-
-        <input
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          placeholder="LinkedIn profile URL (saved for reference)"
-          className="w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-xs text-white placeholder-dark-5 focus:outline-none focus:border-violet-500/50"
-        />
-        <textarea
-          value={rawText}
-          onChange={e => setRawText(e.target.value)}
-          placeholder="Paste profile text (LinkedIn About + Experience section)"
-          rows={4}
-          className="w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-xs text-white placeholder-dark-5 resize-none focus:outline-none focus:border-violet-500/50"
-        />
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Current Role</label>
+          <input value={role} onChange={e => setRole(e.target.value)}
+            placeholder="e.g. IC Design Engineer"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Match</label>
+          <select value={match} onChange={e => setMatch(e.target.value as Candidate["match"])}
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white">
+            <option value="strong">Strong</option>
+            <option value="medium">Medium</option>
+            <option value="weak">Weak</option>
+          </select>
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Target Roles at IMEC</label>
+          <input value={targets} onChange={e => setTargets(e.target.value)}
+            placeholder="e.g. Digital IC Designer, ASIC Architect"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Summary</label>
+          <textarea value={summary} onChange={e => setSummary(e.target.value)}
+            placeholder="Brief professional summary..."
+            rows={2}
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 resize-none" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Skills (comma-separated)</label>
+          <input value={tagsStr} onChange={e => setTagsStr(e.target.value)}
+            placeholder="e.g. Cadence Virtuoso, SystemVerilog, CMOS, SPICE"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">LinkedIn URL</label>
+          <input value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)}
+            placeholder="https://linkedin.com/in/..."
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Alert / Notes</label>
+          <input value={alert} onChange={e => setAlert(e.target.value)}
+            placeholder="e.g. needs relocation"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
       </div>
 
       {error && (
-        <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-          {error}
-        </div>
+        <div className="text-[11px] text-red-400">{error}</div>
       )}
 
-      {/* Analyze button */}
-      {!preview && (
-        <div className="flex gap-2">
-          <button
-            onClick={analyze}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-bold hover:bg-violet-500/30 transition-all disabled:opacity-50"
-          >
-            {loading ? "Analyzing…" : "Analyze →"}
-          </button>
-          <button onClick={onCancel} className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Editable preview */}
-      {preview && (
-        <div className="space-y-3 border-t border-dark-4 pt-4">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-dark-5 mb-2">
-            Review & Edit
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Name *</label>
-              <input value={name} onChange={e => setName(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-            </div>
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Current Role</label>
-              <input value={role} onChange={e => setRole(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-            </div>
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Match</label>
-              <select value={match} onChange={e => setMatch(e.target.value as Candidate["match"])}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white">
-                <option value="strong">Strong</option>
-                <option value="medium">Medium</option>
-                <option value="weak">Weak</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Target Roles</label>
-              <input value={targets} onChange={e => setTargets(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-            </div>
-          </div>
-          <div>
-            <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Summary</label>
-            <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={2}
-              className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white resize-none" />
-          </div>
-          <div>
-            <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Skills (comma-separated)</label>
-            <input value={tagsStr} onChange={e => setTagsStr(e.target.value)}
-              className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-          </div>
-          <div>
-            <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Alert / Notes (optional)</label>
-            <input value={alert} onChange={e => setAlert(e.target.value)}
-              placeholder="e.g. relocation required, salary expectations..."
-              className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={confirm}
-              className="flex-1 px-4 py-2 bg-gold text-dark rounded-lg text-xs font-bold hover:bg-gold/90 transition-all">
-              Add to Pipeline
-            </button>
-            <button onClick={() => setPreview(null)}
-              className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-              Re-analyze
-            </button>
-            <button onClick={onCancel}
-              className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex gap-2 pt-1">
+        <button onClick={confirm}
+          className="flex-1 px-4 py-2 bg-gold text-dark rounded-lg text-xs font-bold hover:bg-gold/90 transition-all">
+          Add to Pipeline
+        </button>
+        <button onClick={onCancel}
+          className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
 
-// ── Add Role form ──────────────────────────────────────────────────────────────
-
-const CLUSTERS = ["Design", "Test / Validation", "Layout", "Verification", "FAE", "Other"];
+// ── Add Role form (manual) ─────────────────────────────────────────────────────
 
 function AddRoleForm({
   onSave,
@@ -351,142 +215,56 @@ function AddRoleForm({
   onSave: (cluster: string, role: RoleItem) => void;
   onCancel: () => void;
 }) {
-  const [url, setUrl]           = useState("");
-  const [rawText, setRawText]   = useState("");
-  const [cluster, setCluster]   = useState(CLUSTERS[0]);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
-  const [preview, setPreview]   = useState<RoleItem | null>(null);
-  const [title, setTitle]       = useState("");
-  const [tags, setTags]         = useState("");
-
-  async function analyze() {
-    if (!url.trim() && !rawText.trim()) {
-      setError("Paste a URL or job description first.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setPreview(null);
-    try {
-      const res = await fetch("/api/talent/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: url.trim() || undefined,
-          rawText: rawText.trim() || undefined,
-          type: "role",
-          cluster,
-        }),
-      });
-      const json = await res.json();
-      if (json.error) { setError(json.error); return; }
-      const r: RoleItem & { cluster?: string } = json.role;
-      setPreview(r);
-      setTitle(r.title || "");
-      setTags(r.tags || "");
-      if (r.cluster) setCluster(r.cluster);
-    } catch {
-      setError("Request failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [title, setTitle]     = useState("");
+  const [tags, setTags]       = useState("");
+  const [cluster, setCluster] = useState(CLUSTERS[0]);
+  const [error, setError]     = useState("");
 
   function confirm() {
-    if (!title) { setError("Title is required."); return; }
-    onSave(cluster, { title, tags });
+    if (!title.trim()) { setError("Title is required."); return; }
+    onSave(cluster, { title: title.trim(), tags: tags.trim() });
   }
 
   return (
-    <div className="bg-dark-2 border border-gold/30 rounded-xl p-5 space-y-4">
-      <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-gold mb-1">
+    <div className="bg-dark-2 border border-gold/30 rounded-xl p-5 space-y-3">
+      <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-gold">
         Add Role
       </div>
 
-      <div className="space-y-2">
-        <div className="flex gap-2">
-          <input
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder="Job posting URL (e.g. careers.imec-int.com/...)"
-            className="flex-1 bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-xs text-white placeholder-dark-5 focus:outline-none focus:border-gold/40"
-          />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Job Title *</label>
+          <input value={title} onChange={e => setTitle(e.target.value)}
+            placeholder="e.g. Analog IC Design Engineer"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Cluster</label>
           <select value={cluster} onChange={e => setCluster(e.target.value)}
-            className="bg-dark-3 border border-dark-4 rounded-lg px-2 py-2 text-xs text-white">
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white">
             {CLUSTERS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <textarea
-          value={rawText}
-          onChange={e => setRawText(e.target.value)}
-          placeholder="Or paste the job description here"
-          rows={4}
-          className="w-full bg-dark-3 border border-dark-4 rounded-lg px-3 py-2 text-xs text-white placeholder-dark-5 resize-none focus:outline-none focus:border-gold/40"
-        />
+        <div>
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Tags / Skills</label>
+          <input value={tags} onChange={e => setTags(e.target.value)}
+            placeholder="e.g. Cadence, CMOS, 28nm"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
       </div>
 
-      {error && (
-        <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-[11px] text-red-400">{error}</div>}
 
-      {!preview && (
-        <div className="flex gap-2">
-          <button
-            onClick={analyze}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-gold/20 text-gold border border-gold/30 rounded-lg text-xs font-bold hover:bg-gold/30 transition-all disabled:opacity-50"
-          >
-            {loading ? "Analyzing…" : "Analyze →"}
-          </button>
-          <button onClick={onCancel} className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {preview && (
-        <div className="space-y-3 border-t border-dark-4 pt-4">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-dark-5 mb-2">
-            Review & Edit
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="col-span-2">
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Title *</label>
-              <input value={title} onChange={e => setTitle(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-            </div>
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Cluster</label>
-              <select value={cluster} onChange={e => setCluster(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white">
-                {CLUSTERS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Tags (comma-separated)</label>
-              <input value={tags} onChange={e => setTags(e.target.value)}
-                className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white" />
-            </div>
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={confirm}
-              className="flex-1 px-4 py-2 bg-gold text-dark rounded-lg text-xs font-bold hover:bg-gold/90 transition-all">
-              Add Role
-            </button>
-            <button onClick={() => setPreview(null)}
-              className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-              Re-analyze
-            </button>
-            <button onClick={onCancel}
-              className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex gap-2 pt-1">
+        <button onClick={confirm}
+          className="flex-1 px-4 py-2 bg-gold text-dark rounded-lg text-xs font-bold hover:bg-gold/90 transition-all">
+          Add Role
+        </button>
+        <button onClick={onCancel}
+          className="px-3 py-2 text-xs text-dark-5 hover:text-grey transition-colors">
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -512,8 +290,6 @@ export default function TalentAccountDrawer({
     ? new Date(account.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
     : "—";
 
-  // ── Persist updated notes to Supabase ───────────────────────────────────────
-
   async function saveNotes(updated: RichNotes) {
     setSaving(true);
     try {
@@ -529,22 +305,16 @@ export default function TalentAccountDrawer({
   }
 
   async function handleAddCandidate(candidate: Candidate) {
-    const updated: RichNotes = {
-      ...rich,
-      candidates: [...(rich?.candidates || []), candidate],
-    };
-    await saveNotes(updated);
+    await saveNotes({ ...rich, candidates: [...(rich?.candidates || []), candidate] });
     setShowAddCandidate(false);
   }
 
   async function handleAddRole(cluster: string, role: RoleItem) {
     const currentRoles = rich?.roles || {};
-    const clusterRoles = currentRoles[cluster] || [];
-    const updated: RichNotes = {
+    await saveNotes({
       ...rich,
-      roles: { ...currentRoles, [cluster]: [...clusterRoles, role] },
-    };
-    await saveNotes(updated);
+      roles: { ...currentRoles, [cluster]: [...(currentRoles[cluster] || []), role] },
+    });
     setShowAddRole(false);
   }
 
@@ -571,35 +341,25 @@ export default function TalentAccountDrawer({
               <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${STATUS_COLORS[account.status] ?? "bg-dark-3 text-grey"}`}>
                 {STATUS_LABELS[account.status] ?? account.status}
               </span>
-              <div className="text-[10px] text-dark-5 text-right">
-                Created: {createdDate}
-              </div>
+              <div className="text-[10px] text-dark-5 text-right">Created: {createdDate}</div>
               {saving && <div className="text-[10px] text-gold">Saving…</div>}
             </div>
           </div>
 
-          {/* Stage selector */}
           <div className="flex gap-1.5 mt-4">
             {stages.map((s) => (
-              <button
-                key={s}
-                onClick={() => onMove(account.id, s)}
+              <button key={s} onClick={() => onMove(account.id, s)}
                 className={`px-3 py-1 rounded text-[10px] font-semibold transition-all ${
                   account.status === s
                     ? "bg-violet-500/20 text-violet-300 border border-violet-500/40"
                     : "bg-dark-3 text-dark-5 hover:text-grey border border-transparent"
-                }`}
-              >
+                }`}>
                 {STATUS_LABELS[s]}
               </button>
             ))}
           </div>
 
-          {/* Close */}
-          <button
-            onClick={onClose}
-            className="absolute top-5 right-6 text-dark-5 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="absolute top-5 right-6 text-dark-5 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -643,9 +403,9 @@ export default function TalentAccountDrawer({
                           <span className="text-gold font-bold text-2xl leading-none">{rich.opportunity.open_roles_count}</span>
                         </div>
                         {[
-                          ["Signal",  rich.opportunity.signal],
-                          ["Urgency", rich.opportunity.urgency],
-                          ["Contact", STATUS_LABELS[account.status] ?? account.status],
+                          ["Signal",   rich.opportunity.signal],
+                          ["Urgency",  rich.opportunity.urgency],
+                          ["Contact",  STATUS_LABELS[account.status] ?? account.status],
                           ["Priority", account.priority],
                         ].map(([label, val]) => val ? (
                           <div key={label} className="flex justify-between items-start gap-4 text-xs border-b border-dark-4 pb-2 last:border-0 last:pb-0">
@@ -664,10 +424,8 @@ export default function TalentAccountDrawer({
                 <div className="flex items-center justify-between">
                   <SectionLabel>Open Roles</SectionLabel>
                   {!showAddRole && (
-                    <button
-                      onClick={() => setShowAddRole(true)}
-                      className="flex items-center gap-1 text-[10px] font-bold text-grey hover:text-gold transition-colors pb-2"
-                    >
+                    <button onClick={() => setShowAddRole(true)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-grey hover:text-gold transition-colors pb-2">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
@@ -686,9 +444,7 @@ export default function TalentAccountDrawer({
                   <div className="grid grid-cols-3 gap-3">
                     {Object.entries(rich.roles).map(([cluster, roles]) => (
                       <div key={cluster} className="bg-dark-2 rounded-xl border border-dark-4 p-4">
-                        <div className="text-[9px] font-bold uppercase tracking-[1.5px] text-dark-5 mb-3">
-                          {cluster}
-                        </div>
+                        <div className="text-[9px] font-bold uppercase tracking-[1.5px] text-dark-5 mb-3">{cluster}</div>
                         <div className="space-y-2">
                           {roles.map((r, i) => (
                             <div key={i} className="border-l-2 border-gold/60 pl-3 py-0.5">
@@ -701,10 +457,8 @@ export default function TalentAccountDrawer({
                     ))}
                   </div>
                 ) : !showAddRole ? (
-                  <div
-                    onClick={() => setShowAddRole(true)}
-                    className="text-center py-6 text-dark-5 text-[10px] border border-dashed border-dark-4 rounded-lg cursor-pointer hover:border-gold/30 hover:text-grey transition-all"
-                  >
+                  <div onClick={() => setShowAddRole(true)}
+                    className="text-center py-6 text-dark-5 text-[10px] border border-dashed border-dark-4 rounded-lg cursor-pointer hover:border-gold/30 hover:text-grey transition-all">
                     + add role
                   </div>
                 ) : null}
@@ -715,10 +469,8 @@ export default function TalentAccountDrawer({
                 <div className="flex items-center justify-between">
                   <SectionLabel>Candidate Match Analysis</SectionLabel>
                   {!showAddCandidate && (
-                    <button
-                      onClick={() => setShowAddCandidate(true)}
-                      className="flex items-center gap-1 text-[10px] font-bold text-grey hover:text-violet-400 transition-colors pb-2"
-                    >
+                    <button onClick={() => setShowAddCandidate(true)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-grey hover:text-violet-400 transition-colors pb-2">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
@@ -742,13 +494,9 @@ export default function TalentAccountDrawer({
                             <div className="flex items-center gap-2">
                               <div className="text-sm font-bold text-white">{c.name}</div>
                               {c.linkedin_url && (
-                                <a
-                                  href={c.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
-                                  className="text-[9px] text-blue-400 hover:text-blue-300 transition-colors"
-                                >
+                                  className="text-[9px] text-blue-400 hover:text-blue-300 transition-colors">
                                   LinkedIn ↗
                                 </a>
                               )}
@@ -777,10 +525,8 @@ export default function TalentAccountDrawer({
                     ))}
                   </div>
                 ) : !showAddCandidate ? (
-                  <div
-                    onClick={() => setShowAddCandidate(true)}
-                    className="text-center py-6 text-dark-5 text-[10px] border border-dashed border-dark-4 rounded-lg cursor-pointer hover:border-violet-500/30 hover:text-grey transition-all"
-                  >
+                  <div onClick={() => setShowAddCandidate(true)}
+                    className="text-center py-6 text-dark-5 text-[10px] border border-dashed border-dark-4 rounded-lg cursor-pointer hover:border-violet-500/30 hover:text-grey transition-all">
                     + add candidate
                   </div>
                 ) : null}
@@ -814,7 +560,6 @@ export default function TalentAccountDrawer({
               )}
             </>
           ) : (
-            /* Fallback: plain text notes */
             <div>
               <SectionLabel>Notes</SectionLabel>
               <div className="bg-dark-2 rounded-xl border border-dark-4 p-5 text-sm text-grey leading-relaxed whitespace-pre-wrap">
