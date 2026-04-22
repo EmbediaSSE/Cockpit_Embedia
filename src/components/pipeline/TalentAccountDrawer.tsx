@@ -26,7 +26,7 @@ interface TalentAccount {
 
 // ── Parsed note schema ─────────────────────────────────────────────────────────
 
-interface RoleItem { title: string; tags: string; }
+interface RoleItem { title: string; tags: string; url?: string; }
 interface Candidate {
   name: string; role: string; match: "strong" | "weak" | "medium";
   target_roles: string; summary: string; tags: string[]; alert?: string;
@@ -217,12 +217,13 @@ function AddRoleForm({
 }) {
   const [title, setTitle]     = useState("");
   const [tags, setTags]       = useState("");
+  const [url, setUrl]         = useState("");
   const [cluster, setCluster] = useState(CLUSTERS[0]);
   const [error, setError]     = useState("");
 
   function confirm() {
     if (!title.trim()) { setError("Title is required."); return; }
-    onSave(cluster, { title: title.trim(), tags: tags.trim() });
+    onSave(cluster, { title: title.trim(), tags: tags.trim(), ...(url.trim() ? { url: url.trim() } : {}) });
   }
 
   return (
@@ -249,6 +250,12 @@ function AddRoleForm({
           <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Tags / Skills</label>
           <input value={tags} onChange={e => setTags(e.target.value)}
             placeholder="e.g. Cadence, CMOS, 28nm"
+            className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] text-dark-5 uppercase tracking-wider block mb-1">Job Posting URL</label>
+          <input value={url} onChange={e => setUrl(e.target.value)}
+            placeholder="https://www.imec-int.com/en/work-at-imec/job-opportunities/..."
             className="w-full bg-dark-3 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5" />
         </div>
       </div>
@@ -281,9 +288,11 @@ export default function TalentAccountDrawer({
   onMove: (id: string, status: string) => void;
 }) {
   const [rich, setRich] = useState<RichNotes | null>(() => parseNotes(account.notes));
-  const [showAddCandidate, setShowAddCandidate] = useState(false);
-  const [showAddRole, setShowAddRole]           = useState(false);
-  const [saving, setSaving]                     = useState(false);
+  const [showAddCandidate, setShowAddCandidate]     = useState(false);
+  const [showAddRole, setShowAddRole]               = useState(false);
+  const [saving, setSaving]                         = useState(false);
+  const [editingLinkedinIdx, setEditingLinkedinIdx] = useState<number | null>(null);
+  const [editLinkedinVal, setEditLinkedinVal]       = useState("");
 
   const stages = ["identified", "researched", "approached", "screening", "placed"];
   const createdDate = account.created_at
@@ -307,6 +316,15 @@ export default function TalentAccountDrawer({
   async function handleAddCandidate(candidate: Candidate) {
     await saveNotes({ ...rich, candidates: [...(rich?.candidates || []), candidate] });
     setShowAddCandidate(false);
+  }
+
+  async function updateCandidateLinkedin(idx: number, url: string) {
+    if (!rich?.candidates) return;
+    const updatedCandidates = rich.candidates.map((c, i) =>
+      i === idx ? { ...c, linkedin_url: url.trim() } : c
+    );
+    await saveNotes({ ...rich, candidates: updatedCandidates });
+    setEditingLinkedinIdx(null);
   }
 
   async function handleAddRole(cluster: string, role: RoleItem) {
@@ -448,7 +466,18 @@ export default function TalentAccountDrawer({
                         <div className="space-y-2">
                           {roles.map((r, i) => (
                             <div key={i} className="border-l-2 border-gold/60 pl-3 py-0.5">
-                              <div className="text-xs font-semibold text-white leading-snug">{r.title}</div>
+                              {r.url ? (
+                                <a
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-semibold text-gold hover:text-gold/80 underline-offset-2 hover:underline leading-snug transition-colors"
+                                >
+                                  {r.title} ↗
+                                </a>
+                              ) : (
+                                <div className="text-xs font-semibold text-white leading-snug">{r.title}</div>
+                              )}
                               <div className="text-[10px] text-dark-5 mt-0.5 leading-snug">{r.tags}</div>
                             </div>
                           ))}
@@ -491,14 +520,38 @@ export default function TalentAccountDrawer({
                       <div key={i} className="bg-dark-2 rounded-xl border border-dark-4 p-5">
                         <div className="flex items-start justify-between gap-4 mb-3">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <div className="text-sm font-bold text-white">{c.name}</div>
-                              {c.linkedin_url && (
+                              {c.linkedin_url ? (
                                 <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
                                   className="text-[9px] text-blue-400 hover:text-blue-300 transition-colors">
                                   LinkedIn ↗
                                 </a>
+                              ) : editingLinkedinIdx === i ? (
+                                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    autoFocus
+                                    value={editLinkedinVal}
+                                    onChange={e => setEditLinkedinVal(e.target.value)}
+                                    placeholder="https://linkedin.com/in/..."
+                                    className="text-[9px] bg-dark-3 border border-blue-500/40 rounded px-1.5 py-0.5 text-white placeholder-dark-5 w-44"
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") updateCandidateLinkedin(i, editLinkedinVal);
+                                      if (e.key === "Escape") setEditingLinkedinIdx(null);
+                                    }}
+                                  />
+                                  <button onClick={() => updateCandidateLinkedin(i, editLinkedinVal)}
+                                    className="text-[10px] text-gold hover:text-gold/80 font-bold">✓</button>
+                                  <button onClick={() => setEditingLinkedinIdx(null)}
+                                    className="text-[10px] text-dark-5 hover:text-grey">✕</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setEditingLinkedinIdx(i); setEditLinkedinVal(""); }}
+                                  className="text-[9px] text-dark-5 hover:text-blue-400 border border-dashed border-dark-4 hover:border-blue-500/40 px-1.5 py-0.5 rounded transition-colors">
+                                  + LinkedIn
+                                </button>
                               )}
                             </div>
                             <div className="text-[11px] text-dark-5 mt-0.5">{c.role}</div>
