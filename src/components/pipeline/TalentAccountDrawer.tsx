@@ -27,10 +27,12 @@ interface TalentAccount {
 // ── Parsed note schema ─────────────────────────────────────────────────────────
 
 interface RoleItem { title: string; tags: string; url?: string; }
+interface MatchedPosition { title: string; url?: string; }
 interface Candidate {
   name: string; role: string; match: "strong" | "weak" | "medium";
   target_roles: string; summary: string; tags: string[]; alert?: string;
   linkedin_url?: string;
+  matched_positions?: MatchedPosition[];
 }
 interface NextStep { label: string; date: string; done: boolean; }
 interface RichNotes {
@@ -558,9 +560,23 @@ export default function TalentAccountDrawer({
                           </div>
                           <MatchBadge match={c.match} />
                         </div>
-                        <div className="text-[11px] text-grey mb-2 leading-relaxed">
-                          <span className="text-dark-5 font-semibold">Target roles: </span>{c.target_roles}
-                        </div>
+                        {c.matched_positions && c.matched_positions.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {c.matched_positions.map((pos, j) => (
+                              pos.url ? (
+                                <a key={j} href={pos.url} target="_blank" rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-[10px] bg-violet-500/10 text-violet-300 border border-violet-500/30 px-2 py-0.5 rounded hover:bg-violet-500/20 hover:border-violet-400/50 transition-colors">
+                                  ↳ {pos.title} ↗
+                                </a>
+                              ) : (
+                                <span key={j} className="text-[10px] bg-violet-500/10 text-violet-300 border border-violet-500/30 px-2 py-0.5 rounded">
+                                  ↳ {pos.title}
+                                </span>
+                              )
+                            ))}
+                          </div>
+                        )}
                         <div className="text-[11px] text-grey mb-3 leading-relaxed">{c.summary}</div>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {c.tags.map((tag, j) => (
