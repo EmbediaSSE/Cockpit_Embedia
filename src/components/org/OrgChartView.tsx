@@ -22,6 +22,98 @@ const AI_AGENTS = [
   { id: "whitepaper", name: "White Paper Agent", type: "AI Agent", desc: "Long-form publishing, research synthesis", status: "active" },
 ];
 
+// Embedia AI OS — Internal Dev Team (hired 2026-04-23)
+const DEV_AGENTS = [
+  {
+    id: "tech-lead",
+    name: "Tech Lead",
+    emoji: "🏗️",
+    desc: "Spec-driven development, architecture decisions, API design, planning",
+    skills: ["spec-driven-development", "planning-and-task-breakdown", "api-and-interface-design"],
+    upgraded: false,
+  },
+  {
+    id: "frontend-eng",
+    name: "Frontend Engineer",
+    emoji: "🎨",
+    desc: "Production UI — anti-slop enforcement, design commitment protocol, motion & spatial composition",
+    skills: ["frontend-ui-engineering", "ui-ux-pro-max", "browser-testing-with-devtools"],
+    upgraded: true,
+  },
+  {
+    id: "backend-eng",
+    name: "Backend Engineer",
+    emoji: "⚙️",
+    desc: "APIs, data models, business logic — TDD + security-first",
+    skills: ["api-and-interface-design", "test-driven-development", "security-and-hardening"],
+    upgraded: false,
+  },
+  {
+    id: "test-eng",
+    name: "Test Engineer",
+    emoji: "🧪",
+    desc: "TDD with Iron Rule enforcement + mutation testing via Stryker",
+    skills: ["test-driven-development", "browser-testing-with-devtools", "debugging-and-error-recovery"],
+    upgraded: true,
+  },
+  {
+    id: "security-auditor",
+    name: "Security Auditor",
+    emoji: "🔒",
+    desc: "OWASP + CodeQL + Semgrep tooling, differential review, variant analysis, supply chain",
+    skills: ["security-and-hardening", "code-review-and-quality"],
+    upgraded: true,
+  },
+  {
+    id: "ciso",
+    name: "CISO",
+    emoji: "🛡️",
+    desc: "AI-layer security, prompt injection detection, file audit, instruction integrity",
+    skills: ["ciso-security"],
+    upgraded: false,
+  },
+  {
+    id: "enterprise-architect",
+    name: "Enterprise Architect",
+    emoji: "🏛️",
+    desc: "TOGAF ADM, capability maps, EA governance, architecture roadmaps",
+    skills: ["enterprise-architecture", "documentation-and-adrs"],
+    upgraded: false,
+  },
+  {
+    id: "solution-architect",
+    name: "Solution Architect",
+    emoji: "🔧",
+    desc: "HLD, LLD, C4 diagrams, technology selection, NFRs",
+    skills: ["solution-architecture", "api-and-interface-design"],
+    upgraded: false,
+  },
+  {
+    id: "code-reviewer",
+    name: "Code Reviewer",
+    emoji: "👁️",
+    desc: "Six-axis review with confidence scoring, git history analysis, two-stage spec compliance",
+    skills: ["code-review-and-quality", "code-simplification", "security-and-hardening"],
+    upgraded: true,
+  },
+  {
+    id: "devops-eng",
+    name: "DevOps Engineer",
+    emoji: "🚀",
+    desc: "CI/CD, canary monitoring, performance baselines, engineering retros, git worktrees",
+    skills: ["shipping-and-launch", "ci-cd-and-automation", "git-workflow-and-versioning"],
+    upgraded: true,
+  },
+  {
+    id: "tech-writer",
+    name: "Tech Writer",
+    emoji: "📝",
+    desc: "ADRs, README, API docs, changelogs — document the why, not the what",
+    skills: ["documentation-and-adrs"],
+    upgraded: false,
+  },
+];
+
 const DEPARTMENTS = [
   {
     name: "Executive",
@@ -68,7 +160,8 @@ export default function OrgChartView() {
   }, []);
 
   const activeAgents = AI_AGENTS.filter((a) => a.status === "active").length;
-  const totalCapacity = team.length + activeAgents;
+  const upgradedToday = DEV_AGENTS.filter((a) => a.upgraded).length;
+  const totalCapacity = team.length + activeAgents + DEV_AGENTS.length;
 
   return (
     <div>
@@ -76,8 +169,13 @@ export default function OrgChartView() {
         <div>
           <h2 className="text-xl font-bold text-white">Organisation</h2>
           <p className="text-xs text-grey mt-1">
-            {team.length} team member{team.length !== 1 ? "s" : ""} + {AI_AGENTS.length} AI agents ({activeAgents} active) — {totalCapacity} total capacity
+            {team.length} human{team.length !== 1 ? "s" : ""} · {AI_AGENTS.length} ops agents ({activeAgents} active) · {DEV_AGENTS.length} dev agents — {totalCapacity} total capacity
           </p>
+          {upgradedToday > 0 && (
+            <p className="text-[10px] text-violet-400 mt-0.5">
+              ↑ {upgradedToday} dev agents upgraded today (2026-04-23)
+            </p>
+          )}
         </div>
       </div>
 
@@ -188,6 +286,57 @@ export default function OrgChartView() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* AI Dev Team — Embedia AI OS */}
+        <div className="w-full max-w-5xl mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-violet-400">Embedia AI OS — Dev Team</h3>
+            <span className="text-[10px] bg-violet-500/10 border border-violet-500/30 text-violet-400 px-2 py-0.5 rounded-full font-semibold">
+              {DEV_AGENTS.length} agents · all active
+            </span>
+            <span className="text-[10px] bg-gold/10 border border-gold/30 text-gold px-2 py-0.5 rounded-full font-semibold">
+              ↑ {upgradedToday} upgraded 2026-04-23
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {DEV_AGENTS.map((agent) => (
+              <div
+                key={agent.id}
+                className={`bg-dark-2 border rounded-xl p-3 transition-colors ${
+                  agent.upgraded
+                    ? "border-violet-500/40 hover:border-violet-500/70"
+                    : "border-dark-4 hover:border-violet-500/30"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-violet-500/15 text-violet-300 flex items-center justify-center text-sm flex-shrink-0">
+                      {agent.emoji}
+                    </div>
+                    <div className="text-[11px] font-bold text-white leading-tight">{agent.name}</div>
+                  </div>
+                  {agent.upgraded && (
+                    <span className="text-[8px] bg-gold/10 text-gold border border-gold/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide flex-shrink-0 ml-1">
+                      ↑ New
+                    </span>
+                  )}
+                </div>
+                <div className="text-[9px] text-dark-5 leading-relaxed mb-2">{agent.desc}</div>
+                <div className="flex flex-wrap gap-1">
+                  {agent.skills.slice(0, 2).map((skill) => (
+                    <span key={skill} className="text-[8px] bg-dark-3 text-grey px-1.5 py-0.5 rounded font-mono">
+                      {skill.split("-").slice(0, 2).join("-")}
+                    </span>
+                  ))}
+                  {agent.skills.length > 2 && (
+                    <span className="text-[8px] text-dark-5">+{agent.skills.length - 2}</span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
