@@ -23,7 +23,7 @@ interface Engagement {
   id: string;
   code: string;
   name: string;
-  type: "delivery" | "rfq" | "retainer" | "advisory";
+  type: "delivery" | "rfq" | "retainer" | "advisory" | "historical";
   outcome: "active" | "won" | "lost" | "on_hold";
   value: number;
   date: string | null;
@@ -127,7 +127,10 @@ function engagementOutcomeBadge(outcome: Engagement["outcome"]) {
 }
 
 function typeLabel(t: Engagement["type"]) {
-  return { delivery: "Delivery", rfq: "RFQ", retainer: "Retainer", advisory: "Advisory" }[t] ?? t;
+  return {
+    delivery: "Delivery", rfq: "RFQ", retainer: "Retainer",
+    advisory: "Advisory", historical: "Historical",
+  }[t] ?? t;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -174,6 +177,15 @@ export default function PipelineView() {
     setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, status: newStatus } : a));
     if (selectedAccount?.id === accountId) {
       setSelectedAccount((prev) => prev ? { ...prev, status: newStatus } : null);
+    }
+  }
+
+  async function updateAccountNotes(accountId: string, notes: string) {
+    const supabase = createClient();
+    await supabase.from("pipeline_accounts").update({ notes, updated_at: new Date().toISOString() }).eq("id", accountId);
+    setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, notes } : a));
+    if (selectedAccount?.id === accountId) {
+      setSelectedAccount((prev) => prev ? { ...prev, notes } : null);
     }
   }
 
@@ -472,6 +484,7 @@ export default function PipelineView() {
           account={selectedAccount}
           onClose={() => setSelectedAccount(null)}
           onMove={moveAccount}
+          onNotesUpdate={updateAccountNotes}
           showEngForm={showEngForm}
           setShowEngForm={setShowEngForm}
           engForm={engForm}
@@ -570,7 +583,7 @@ function KanbanCard({ account, lane, stages, onSelect, onMove }: {
 // ── AccountDrawer ──────────────────────────────────────────────────────────────
 
 function AccountDrawer({
-  account, onClose, onMove,
+  account, onClose, onMove, onNotesUpdate,
   showEngForm, setShowEngForm,
   engForm, setEngForm,
   onAddEngagement, engSaving,
@@ -578,6 +591,7 @@ function AccountDrawer({
   account: Account;
   onClose: () => void;
   onMove: (id: string, status: string) => void;
+  onNotesUpdate: (id: string, notes: string) => Promise<void>;
   showEngForm: boolean;
   setShowEngForm: (v: boolean) => void;
   engForm: {
@@ -589,6 +603,26 @@ function AccountDrawer({
   engSaving: boolean;
 }) {
   const cfg = SWIMLANE_CONFIG[account.swimlane || "customer"];
+
+  // ── Notes editing state ──────────────────────────────────────────────────
+  const [notesText, setNotesText]     = React.useState(account.notes || "");
+  const [notesEditing, setNotesEditing] = React.useState(false);
+  const [notesSaving, setNotesSaving] = React.useState(false);
+
+  // Sync if account changes (e.g. switching accounts)
+  React.useEffect(() => { setNotesText(account.notes || ""); setNotesEditing(false); }, [account.id]);
+
+  async function saveNotes() {
+    setNotesSaving(true);
+    await onNotesUpdate(account.id, notesText);
+    setNotesSaving(false);
+    setNotesEditing(false);
+  }
+
+  // ── Won / Historical revenue total ───────────────────────────────────────
+  const wonRevenue = (account.customer_engagements || [])
+    .filter((e) => e.outcome === "won" || e.type === "historical")
+    .reduce((sum, e) => sum + (e.value || 0), 0);
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-end">
@@ -659,13 +693,68 @@ function AccountDrawer({
             )}
           </div>
 
-          {/* Notes */}
+          {/* Notes — always editable regardless of status */}
           <div>
-            <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5 mb-2">Notes</div>
-            <div className="text-sm text-grey leading-relaxed bg-dark-3 rounded-lg p-3">
-              {account.notes || "No notes."}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5">Notes</div>
+              {!notesEditing ? (
+                <button
+                  onClick={() => setNotesEditing(true)}
+                  className="text-[9px] font-bold text-grey hover:text-gold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                  </svg>
+                  Edit
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setNotesText(account.notes || ""); setNotesEditing(false); }}
+                    className="text-[9px] text-grey hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveNotes}
+                    disabled={notesSaving}
+                    className="text-[9px] font-bold px-2.5 py-1 rounded bg-gold text-dark hover:bg-gold/90 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {notesSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
             </div>
+            {notesEditing ? (
+              <textarea
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+                rows={5}
+                placeholder="Add notes about this account…"
+                className="w-full bg-dark-3 border border-gold/40 rounded-lg p-3 text-sm text-white placeholder-dark-5 resize-none focus:outline-none focus:border-gold/70 transition-colors"
+                autoFocus
+              />
+            ) : (
+              <div
+                onClick={() => setNotesEditing(true)}
+                className="text-sm text-grey leading-relaxed bg-dark-3 rounded-lg p-3 cursor-text hover:bg-dark-4 transition-colors min-h-[48px] whitespace-pre-wrap"
+              >
+                {notesText || <span className="italic text-dark-5">Click to add notes…</span>}
+              </div>
+            )}
           </div>
+
+          {/* Won Revenue total (customer only) */}
+          {account.swimlane === "customer" && wonRevenue > 0 && (
+            <div className="bg-green/10 border border-green/30 rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-green">
+                Total Won Revenue
+              </div>
+              <div className="text-lg font-bold text-green">
+                €{wonRevenue.toLocaleString()}
+              </div>
+            </div>
+          )}
 
           {/* ── Customer engagements ─────────────────────────────────────────── */}
           {account.swimlane === "customer" && (
@@ -689,14 +778,17 @@ function AccountDrawer({
               {(account.customer_engagements || []).length > 0 ? (
                 <div className="space-y-2 mb-3">
                   {(account.customer_engagements || []).map((eng) => (
-                    <div key={eng.id} className="bg-dark-3 rounded-lg p-3">
+                    <div key={eng.id} className={`rounded-lg p-3 ${eng.type === "historical" ? "bg-green/5 border border-green/20" : "bg-dark-3"}`}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[9px] text-dark-5 font-mono">{eng.code}</span>
+                          {eng.code && <span className="text-[9px] text-dark-5 font-mono">{eng.code}</span>}
                           <span className="text-sm font-semibold text-white">{eng.name}</span>
+                          {eng.type === "historical" && (
+                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green/20 text-green">Historical</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-dark-5">{typeLabel(eng.type)}</span>
+                          {eng.type !== "historical" && <span className="text-[9px] text-dark-5">{typeLabel(eng.type)}</span>}
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${engagementOutcomeBadge(eng.outcome)}`}>
                             {eng.outcome.replace("_", " ")}
                           </span>
@@ -748,14 +840,23 @@ function AccountDrawer({
                     />
                     <select
                       value={engForm.type}
-                      onChange={(e) => setEngForm({ ...engForm, type: e.target.value as Engagement["type"] })}
+                      onChange={(e) => {
+                        const t = e.target.value as Engagement["type"];
+                        setEngForm({ ...engForm, type: t, outcome: t === "historical" ? "won" : engForm.outcome });
+                      }}
                       className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white"
                     >
                       <option value="delivery">Delivery</option>
                       <option value="rfq">RFQ</option>
                       <option value="retainer">Retainer</option>
                       <option value="advisory">Advisory</option>
+                      <option value="historical">Historical (aggregate)</option>
                     </select>
+                    {engForm.type === "historical" && (
+                      <div className="col-span-2 text-[10px] text-gold bg-gold/10 border border-gold/20 rounded px-2 py-1.5">
+                        Use this to log total past business (e.g. &ldquo;Toyota 2018–2024 — all projects&rdquo;). Outcome is set to Won automatically and counted in the revenue total.
+                      </div>
+                    )}
                     <select
                       value={engForm.outcome}
                       onChange={(e) => setEngForm({ ...engForm, outcome: e.target.value as Engagement["outcome"] })}

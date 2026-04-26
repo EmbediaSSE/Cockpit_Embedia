@@ -16,6 +16,7 @@ import OrgChartView from "@/components/org/OrgChartView";
 import CriticalNow from "@/components/dashboard/CriticalNow";
 import DailyBriefing from "@/components/dashboard/DailyBriefing";
 import AdminSwimlane from "@/components/dashboard/AdminSwimlane";
+import CeoBacklog from "@/components/dashboard/CeoBacklog";
 import DetailPanel from "@/components/shared/DetailPanel";
 import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
 import CreateRecordModal from "@/components/shared/CreateRecordModal";
@@ -382,6 +383,10 @@ function DashboardInner() {
                   />
                 ))}
               </div>
+
+              {/* CEO & Project Backlog */}
+              <SectionTitle>CEO &amp; Project Backlog</SectionTitle>
+              <CeoBacklog />
 
               {/* Admin & Compliance Tasks */}
               <SectionTitle>Admin &amp; Compliance</SectionTitle>

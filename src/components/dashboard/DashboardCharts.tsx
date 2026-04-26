@@ -9,6 +9,7 @@ interface RevenueBar {
   name: string;
   revenue: number;
   margin: number;
+  stage?: string;
 }
 
 interface PipelineSlice {
@@ -118,10 +119,12 @@ function BarChart({ data }: { data: RevenueBar[] }) {
               x={x} y={padT} width={barW} height={plotH}
               rx={4} fill="#1E1E1E"
             />
-            {/* Actual bar */}
+            {/* Actual bar — gold=Won, dimmer=Active */}
             <rect
               x={x} y={y} width={barW} height={h}
-              rx={4} fill="#F5A623" opacity={opacity}
+              rx={4}
+              fill={data[i]?.stage === "Won" ? "#F5A623" : "#C47D0E"}
+              opacity={opacity}
             >
               <animate
                 attributeName="height" from="0" to={h}
@@ -234,7 +237,7 @@ export default function DashboardCharts() {
       const [projectsRes, pipelineRes] = await Promise.all([
         supabase
           .from("projects")
-          .select("code, name, selling_price, margin_pct, status"),
+          .select("code, name, selling_price, margin_pct, status, stage"),
         supabase
           .from("pipeline_accounts")
           .select("status, swimlane"),
@@ -243,15 +246,19 @@ export default function DashboardCharts() {
       const projects = projectsRes.data ?? [];
       const accounts = pipelineRes.data ?? [];
 
-      // ── Revenue bars ──────────────────────────────────────────
+      // ── Revenue bars: Won + Active only — exclude Lost, Planned, Concept ──
+      // Lost RFQs and pipeline opportunities must not inflate confirmed revenue.
+      const REVENUE_STAGES = ["Won", "Active"];
       const revenueData: RevenueBar[] = projects
         .filter((p) => (p.selling_price ?? 0) > 0)
+        .filter((p) => REVENUE_STAGES.includes(p.stage ?? ""))
         .sort((a, b) => b.selling_price - a.selling_price)
         .slice(0, 7)
         .map((p) => ({
           name:    p.code || p.name?.slice(0, 10) || "—",
           revenue: p.selling_price,
           margin:  p.margin_pct ?? 0,
+          stage:   p.stage as string,
         }));
 
       const totalRevenue = revenueData.reduce((s, d) => s + d.revenue, 0);
@@ -314,8 +321,16 @@ export default function DashboardCharts() {
       <div className="lg:col-span-2 bg-dark-2 rounded-xl border border-dark-4 p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-sm font-semibold text-white">Revenue Pipeline</div>
-            <div className="text-xs text-grey mt-0.5">By project · EUR</div>
+            <div className="text-sm font-semibold text-white">Confirmed Revenue</div>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-xs text-grey">Won &amp; Active projects only · EUR</span>
+              <span className="flex items-center gap-1 text-[9px] text-grey">
+                <span className="w-2 h-2 rounded-sm inline-block" style={{background:"#F5A623"}} /> Won
+              </span>
+              <span className="flex items-center gap-1 text-[9px] text-grey">
+                <span className="w-2 h-2 rounded-sm inline-block" style={{background:"#C47D0E"}} /> Active
+              </span>
+            </div>
           </div>
           <div className="text-right">
             <div className="text-lg font-bold text-gold">
