@@ -151,6 +151,7 @@ export default function PipelineView() {
     outcome: "active" as Engagement["outcome"], value: "", date: "", lost_reason: "", notes: "",
   });
   const [engSaving, setEngSaving] = useState(false);
+  const [engSaveError, setEngSaveError] = useState<string | null>(null);
 
   useEffect(() => { loadAccounts(); }, []);
 
@@ -204,6 +205,7 @@ export default function PipelineView() {
   async function addEngagement() {
     if (!selectedAccount || !engForm.name) return;
     setEngSaving(true);
+    setEngSaveError(null);
     const supabase = createClient();
     const { data, error } = await supabase.from("customer_engagements").insert({
       account_id: selectedAccount.id,
@@ -229,6 +231,9 @@ export default function PipelineView() {
       } : a));
       setEngForm({ code: "", name: "", type: "delivery", outcome: "active", value: "", date: "", lost_reason: "", notes: "" });
       setShowEngForm(false);
+      setEngSaveError(null);
+    } else if (error) {
+      setEngSaveError(error.message || "Save failed — please try again.");
     }
     setEngSaving(false);
   }
@@ -504,6 +509,7 @@ export default function PipelineView() {
           setEngForm={setEngForm}
           onAddEngagement={addEngagement}
           engSaving={engSaving}
+          engSaveError={engSaveError}
         />
       ) : null}
     </div>
@@ -599,7 +605,7 @@ function AccountDrawer({
   account, onClose, onMove, onNotesUpdate, onAccountUpdate,
   showEngForm, setShowEngForm,
   engForm, setEngForm,
-  onAddEngagement, engSaving,
+  onAddEngagement, engSaving, engSaveError,
 }: {
   account: Account;
   onClose: () => void;
@@ -615,6 +621,7 @@ function AccountDrawer({
   setEngForm: (v: typeof engForm) => void;
   onAddEngagement: () => void;
   engSaving: boolean;
+  engSaveError: string | null;
 }) {
   const cfg = SWIMLANE_CONFIG[account.swimlane || "customer"];
 
@@ -1113,77 +1120,110 @@ function AccountDrawer({
                     Log New Engagement
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Code (e.g. GARRETT-P3)"
-                      value={engForm.code}
-                      onChange={(e) => setEngForm({ ...engForm, code: e.target.value })}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-1"
-                    />
-                    <input
-                      placeholder="Engagement name *"
-                      value={engForm.name}
-                      onChange={(e) => setEngForm({ ...engForm, name: e.target.value })}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-1"
-                    />
-                    <select
-                      value={engForm.type}
-                      onChange={(e) => {
-                        const t = e.target.value as Engagement["type"];
-                        setEngForm({ ...engForm, type: t, outcome: t === "historical" ? "won" : engForm.outcome });
-                      }}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white"
-                    >
-                      <option value="delivery">Delivery</option>
-                      <option value="rfq">RFQ</option>
-                      <option value="retainer">Retainer</option>
-                      <option value="advisory">Advisory</option>
-                      <option value="historical">Historical (aggregate)</option>
-                    </select>
+                    {/* Row 1: Internal ref (optional) + Engagement title */}
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Internal ref <span className="text-dark-4">(optional)</span></div>
+                      <input
+                        placeholder="e.g. TOYOTA-P3"
+                        value={engForm.code}
+                        onChange={(e) => setEngForm({ ...engForm, code: e.target.value })}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Title <span className="text-red-400">*</span></div>
+                      <input
+                        placeholder="e.g. HELIX OCM Phase 2"
+                        value={engForm.name}
+                        onChange={(e) => setEngForm({ ...engForm, name: e.target.value })}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                      />
+                    </div>
+                    {/* Row 2: Type + Outcome */}
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Type</div>
+                      <select
+                        value={engForm.type}
+                        onChange={(e) => {
+                          const t = e.target.value as Engagement["type"];
+                          setEngForm({ ...engForm, type: t, outcome: t === "historical" ? "won" : engForm.outcome });
+                        }}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white"
+                      >
+                        <option value="delivery">Delivery — project/deliverable</option>
+                        <option value="rfq">RFQ — request for quotation</option>
+                        <option value="retainer">Retainer — recurring service</option>
+                        <option value="advisory">Advisory — consulting</option>
+                        <option value="historical">Historical — past total</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Status</div>
+                      <select
+                        value={engForm.outcome}
+                        disabled={engForm.type === "historical"}
+                        onChange={(e) => setEngForm({ ...engForm, outcome: e.target.value as Engagement["outcome"] })}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white disabled:opacity-50"
+                      >
+                        <option value="active">Active — ongoing</option>
+                        <option value="won">Won — delivered / signed</option>
+                        <option value="lost">Lost — didn&apos;t close</option>
+                        <option value="on_hold">On Hold</option>
+                      </select>
+                    </div>
                     {engForm.type === "historical" && (
                       <div className="col-span-2 text-[10px] text-gold bg-gold/10 border border-gold/20 rounded px-2 py-1.5">
-                        Use this to log total past business (e.g. &ldquo;Toyota 2018–2024 — all projects&rdquo;). Outcome is set to Won automatically and counted in the revenue total.
+                        Use this to capture total business before you started using the cockpit (e.g. &ldquo;Toyota 2018–2024 — all projects&rdquo;). Counts toward total won revenue.
                       </div>
                     )}
-                    <select
-                      value={engForm.outcome}
-                      onChange={(e) => setEngForm({ ...engForm, outcome: e.target.value as Engagement["outcome"] })}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white"
-                    >
-                      <option value="active">Active</option>
-                      <option value="won">Won</option>
-                      <option value="lost">Lost</option>
-                      <option value="on_hold">On Hold</option>
-                    </select>
-                    <input
-                      placeholder="Value (€)"
-                      value={engForm.value}
-                      onChange={(e) => setEngForm({ ...engForm, value: e.target.value })}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
-                      type="number"
-                    />
-                    <input
-                      placeholder="Date"
-                      value={engForm.date}
-                      onChange={(e) => setEngForm({ ...engForm, date: e.target.value })}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
-                      type="date"
-                    />
-                    {engForm.outcome === "lost" && (
+                    {/* Row 3: Value + Date */}
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Value (€)</div>
                       <input
-                        placeholder="Why lost?"
-                        value={engForm.lost_reason}
-                        onChange={(e) => setEngForm({ ...engForm, lost_reason: e.target.value })}
-                        className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-2"
+                        placeholder="0"
+                        value={engForm.value}
+                        onChange={(e) => setEngForm({ ...engForm, value: e.target.value })}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                        type="number"
                       />
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-dark-5 mb-1">Date</div>
+                      <input
+                        value={engForm.date}
+                        onChange={(e) => setEngForm({ ...engForm, date: e.target.value })}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                        type="date"
+                      />
+                    </div>
+                    {engForm.outcome === "lost" && (
+                      <div className="col-span-2">
+                        <div className="text-[9px] text-dark-5 mb-1">Why lost?</div>
+                        <input
+                          placeholder="e.g. Budget misalignment, competitor selected…"
+                          value={engForm.lost_reason}
+                          onChange={(e) => setEngForm({ ...engForm, lost_reason: e.target.value })}
+                          className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                        />
+                      </div>
                     )}
-                    <textarea
-                      placeholder="Notes"
-                      value={engForm.notes}
-                      onChange={(e) => setEngForm({ ...engForm, notes: e.target.value })}
-                      rows={2}
-                      className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-2 resize-none"
-                    />
+                    <div className="col-span-2">
+                      <div className="text-[9px] text-dark-5 mb-1">Notes</div>
+                      <textarea
+                        placeholder="Context, key contacts, lessons learned…"
+                        value={engForm.notes}
+                        onChange={(e) => setEngForm({ ...engForm, notes: e.target.value })}
+                        rows={2}
+                        className="w-full bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 resize-none"
+                      />
+                    </div>
                   </div>
+                  {/* Error feedback */}
+                  {engSaveError && (
+                    <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
+                      ⚠ {engSaveError}
+                    </div>
+                  )}
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => setShowEngForm(false)}
