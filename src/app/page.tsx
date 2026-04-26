@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Header from "@/components/dashboard/Header";
+import Sidebar from "@/components/dashboard/Sidebar";
+import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import KpiCard from "@/components/dashboard/KpiCard";
 import SectionTitle from "@/components/dashboard/SectionTitle";
 import ProjectCard from "@/components/dashboard/ProjectCard";
@@ -301,17 +302,22 @@ function DashboardInner() {
       ];
 
   return (
-    <div className="flex h-[100dvh] bg-dark text-white">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
-          activeView={activeView}
-          onViewChange={setActiveView}
-          onNewRecord={() => setShowCreateModal(true)}
-          userName={user.name}
-          userEmail={user.email}
-          userRole={user.role}
-        />
+    <div className="flex h-[100dvh] bg-dark text-white overflow-hidden">
 
+      {/* ── Sidebar (desktop) + Mobile header/bottom-nav ──────── */}
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onNewRecord={() => setShowCreateModal(true)}
+        onChatToggle={() => setChatOpen(!chatOpen)}
+        chatOpen={chatOpen}
+        userName={user.name}
+        userEmail={user.email}
+        userRole={user.role}
+      />
+
+      {/* ── Main content area ──────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <main className="flex-1 overflow-y-auto px-4 py-4 lg:px-8 lg:py-6 pb-24 md:pb-6">
 
           {/* ── Dashboard ───────────────────────────────────────── */}
@@ -344,6 +350,9 @@ function DashboardInner() {
                   })
                 )}
               </div>
+
+              {/* Charts Row */}
+              <DashboardCharts />
 
               {/* Critical Now */}
               <SectionTitle>Critical Now</SectionTitle>
@@ -386,19 +395,55 @@ function DashboardInner() {
               <SectionTitle>Quick Actions</SectionTitle>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { icon: "📋", label: "Daily Briefing",     desc: "Ask Chief of Staff" },
-                  { icon: "🤝", label: "Pipeline Status",    desc: "Ask BizDev Agent" },
-                  { icon: "✍️", label: "Draft Proposal",     desc: "Ask Content Agent" },
-                  { icon: "🏗️", label: "Architecture Review",desc: "Ask MBSE Agent" },
+                  {
+                    label: "Daily Briefing",
+                    desc: "Ask Chief of Staff",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    label: "Pipeline Status",
+                    desc: "Ask BizDev Agent",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    label: "Draft Proposal",
+                    desc: "Ask Content Agent",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    label: "Architecture Review",
+                    desc: "Ask MBSE Agent",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                      </svg>
+                    ),
+                  },
                 ].map((action) => (
                   <button
                     key={action.label}
                     onClick={() => setChatOpen(true)}
-                    className="bg-dark-2 border border-dark-4 rounded-lg p-4 text-left hover:border-gold hover:bg-dark-3 transition-all group"
+                    className="bg-dark-2 border border-dark-4 rounded-xl p-4 text-left hover:border-gold/40 hover:bg-dark-3 transition-all group cursor-pointer"
                   >
-                    <div className="text-xl mb-2">{action.icon}</div>
-                    <div className="text-sm font-semibold group-hover:text-gold transition-colors">{action.label}</div>
-                    <div className="text-[10px] text-dark-5 mt-0.5">{action.desc}</div>
+                    <div className="text-grey group-hover:text-gold transition-colors mb-3">
+                      {action.icon}
+                    </div>
+                    <div className="text-sm font-semibold group-hover:text-gold transition-colors">
+                      {action.label}
+                    </div>
+                    <div className="text-[10px] text-grey mt-0.5">{action.desc}</div>
                   </button>
                 ))}
               </div>
@@ -420,7 +465,7 @@ function DashboardInner() {
             <UserManagementView onViewChange={setActiveView} />
           )}
         </main>
-      </div>
+      </div>{/* end main content area */}
 
       {/* Chat Panel */}
       <ChatPanel isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />

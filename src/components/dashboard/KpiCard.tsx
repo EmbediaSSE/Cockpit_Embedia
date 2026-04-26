@@ -8,40 +8,78 @@ interface KpiCardProps {
   onClick?: () => void;
 }
 
-const accentClasses: Record<string, string> = {
-  gold: "before:bg-gold",
-  green: "before:bg-status-green",
-  amber: "before:bg-status-amber",
-  red: "before:bg-status-red",
-  blue: "before:bg-status-blue",
+const ACCENT: Record<string, { bar: string; glow: string; text: string }> = {
+  gold:  { bar: "#F5A623", glow: "rgba(245,166,35,0.15)",  text: "#F5A623" },
+  green: { bar: "#27AE60", glow: "rgba(39,174,96,0.15)",   text: "#27AE60" },
+  amber: { bar: "#F39C12", glow: "rgba(243,156,18,0.15)",  text: "#F39C12" },
+  red:   { bar: "#E74C3C", glow: "rgba(231,76,60,0.15)",   text: "#E74C3C" },
+  blue:  { bar: "#3498DB", glow: "rgba(52,152,219,0.15)",  text: "#3498DB" },
 };
 
-export default function KpiCard({ label, value, sub, accent = "gold", onClick }: KpiCardProps) {
+export default function KpiCard({
+  label,
+  value,
+  sub,
+  accent = "gold",
+  onClick,
+}: KpiCardProps) {
+  const { bar, glow, text } = ACCENT[accent] ?? ACCENT.gold;
+
   return (
     <div
       onClick={onClick}
-      className={`bg-dark-2 rounded-[10px] p-5 border border-dark-4 relative overflow-hidden transition-all before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] ${accentClasses[accent]} ${
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter") onClick(); } : undefined}
+      className={`relative overflow-hidden rounded-xl border border-dark-4 bg-dark-2 p-5 transition-all duration-200 ${
         onClick
-          ? "cursor-pointer hover:border-gold/60 hover:-translate-y-0.5 hover:bg-dark-3 active:scale-[0.98]"
-          : "hover:border-dark-5 hover:-translate-y-0.5"
+          ? "cursor-pointer hover:-translate-y-0.5 hover:border-dark-5 hover:bg-dark-3 active:scale-[0.98]"
+          : "hover:-translate-y-0.5"
       }`}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[1px] text-grey mb-1">
+      {/* Top accent bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+        style={{ background: bar }}
+      />
+
+      {/* Corner glow */}
+      <div
+        className="absolute top-0 right-0 w-20 h-20 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at top right, ${glow}, transparent 70%)`,
+        }}
+      />
+
+      {/* Label */}
+      <div className="text-[10px] font-semibold uppercase tracking-[1.2px] text-grey mb-1.5">
         {label}
       </div>
-      <div className="text-3xl font-extrabold tracking-tight">
+
+      {/* Value */}
+      <div className="text-3xl font-extrabold tracking-tight leading-none text-white">
         {value}
       </div>
-      <div className="text-[11px] text-grey mt-0.5">
+
+      {/* Sub */}
+      <div className="text-[11px] text-grey mt-1.5 leading-snug">
         {sub}
       </div>
+
+      {/* Drill arrow */}
       {onClick && (
-        <svg
-          className="absolute bottom-2.5 right-2.5 w-3 h-3 text-dark-5"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        <div
+          className="absolute bottom-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: glow }}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+          <svg
+            className="w-2.5 h-2.5"
+            fill="none" viewBox="0 0 24 24"
+            stroke={text} strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
       )}
     </div>
   );
