@@ -655,6 +655,9 @@ function AccountDrawer({
   // Reset when switching accounts
   React.useEffect(() => { setEditingField(null); }, [account.id]);
 
+  // ── Engagement year filter ────────────────────────────────────────────────
+  const [engYearFilter, setEngYearFilter] = React.useState<number | null>(null);
+
   // ── Engagement inline editing state ──────────────────────────────────────
   const [editingEngId, setEditingEngId] = React.useState<string | null>(null);
   const [editEng, setEditEng] = React.useState<{
@@ -665,7 +668,11 @@ function AccountDrawer({
   const [engEngagements, setEngEngagements] = React.useState<Engagement[]>(account.customer_engagements || []);
 
   // Sync local engagement list when account changes
-  React.useEffect(() => { setEngEngagements(account.customer_engagements || []); setEditingEngId(null); }, [account.id]);
+  React.useEffect(() => {
+    setEngEngagements(account.customer_engagements || []);
+    setEditingEngId(null);
+    setEngYearFilter(null);
+  }, [account.id]);
 
   function startEditEng(eng: Engagement) {
     setEditingEngId(eng.id);
@@ -723,9 +730,20 @@ function AccountDrawer({
     setNotesEditing(false);
   }
 
-  // ── Won / Historical revenue total — uses local editable list ───────────
-  const wonRevenue = engEngagements
-    .filter((e) => e.outcome === "won" || e.type === "historical")
+  // ── Revenue breakdown — uses local editable list ────────────────────────
+  const currentYear = new Date().getFullYear();
+  const prevYear    = currentYear - 1;
+
+  const currentYearRevenue = engEngagements
+    .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === currentYear)
+    .reduce((sum, e) => sum + (e.value || 0), 0);
+
+  const prevYearRevenue = engEngagements
+    .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === prevYear)
+    .reduce((sum, e) => sum + (e.value || 0), 0);
+
+  const totalGrossRevenue = engEngagements
+    .filter(e => e.outcome === "won" || e.type === "historical")
     .reduce((sum, e) => sum + (e.value || 0), 0);
 
   return (
@@ -933,14 +951,37 @@ function AccountDrawer({
             )}
           </div>
 
-          {/* Won Revenue total (customer only) */}
-          {account.swimlane === "customer" && wonRevenue > 0 && (
-            <div className="bg-green/10 border border-green/30 rounded-lg px-4 py-3 flex items-center justify-between">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-green">
-                Total Won Revenue
-              </div>
-              <div className="text-lg font-bold text-green">
-                €{wonRevenue.toLocaleString()}
+          {/* Revenue breakdown (customer only) */}
+          {account.swimlane === "customer" && totalGrossRevenue > 0 && (
+            <div className="bg-green/5 border border-green/20 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-3 divide-x divide-green/10">
+                {/* Current year */}
+                <div className="px-4 py-3">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-1">
+                    {currentYear}
+                  </div>
+                  <div className={`text-base font-bold ${currentYearRevenue > 0 ? "text-green" : "text-dark-5"}`}>
+                    {currentYearRevenue > 0 ? `€${currentYearRevenue.toLocaleString()}` : "—"}
+                  </div>
+                </div>
+                {/* Previous year */}
+                <div className="px-4 py-3">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-1">
+                    {prevYear}
+                  </div>
+                  <div className={`text-base font-bold ${prevYearRevenue > 0 ? "text-green" : "text-dark-5"}`}>
+                    {prevYearRevenue > 0 ? `€${prevYearRevenue.toLocaleString()}` : "—"}
+                  </div>
+                </div>
+                {/* All-time gross */}
+                <div className="px-4 py-3">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-1">
+                    Total gross
+                  </div>
+                  <div className="text-base font-bold text-green">
+                    €{totalGrossRevenue.toLocaleString()}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -948,9 +989,30 @@ function AccountDrawer({
           {/* ── Customer engagements ─────────────────────────────────────────── */}
           {account.swimlane === "customer" && (
             <div>
+              {/* Header + year filter */}
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5">
-                  Engagements ({engEngagements.length})
+                <div className="flex items-center gap-2">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5">
+                    Engagements ({engEngagements.length})
+                  </div>
+                  {/* Year filter pills */}
+                  {engEngagements.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {[null, currentYear, prevYear].map((yr) => (
+                        <button
+                          key={yr ?? "all"}
+                          onClick={() => setEngYearFilter(yr)}
+                          className={`text-[8px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                            engYearFilter === yr
+                              ? "bg-gold text-dark"
+                              : "bg-dark-3 text-dark-5 hover:text-white"
+                          }`}
+                        >
+                          {yr ?? "All"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => { setShowEngForm(!showEngForm); setEditingEngId(null); }}
@@ -964,9 +1026,13 @@ function AccountDrawer({
               </div>
 
               {/* Engagement list */}
-              {engEngagements.length > 0 ? (
+              {(() => {
+                const visibleEngs = engYearFilter
+                  ? engEngagements.filter(e => e.date && new Date(e.date).getFullYear() === engYearFilter)
+                  : engEngagements;
+                return visibleEngs.length > 0 ? (
                 <div className="space-y-2 mb-3">
-                  {engEngagements.map((eng) => (
+                  {visibleEngs.map((eng) => (
                     <div key={eng.id}>
                       {/* ── View mode ── */}
                       {editingEngId !== eng.id ? (
@@ -1109,9 +1175,10 @@ function AccountDrawer({
                 </div>
               ) : (
                 <div className="text-xs text-dark-5 bg-dark-3 rounded-lg p-3 mb-3">
-                  No engagements logged yet.
+                  {engYearFilter ? `No engagements in ${engYearFilter}.` : "No engagements logged yet."}
                 </div>
-              )}
+              );
+              })()}
 
               {/* Inline add engagement form */}
               {showEngForm && (
