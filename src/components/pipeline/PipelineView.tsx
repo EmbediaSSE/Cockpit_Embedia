@@ -47,6 +47,7 @@ interface Account {
   revenue_potential: number;
   last_touch: string | null;
   next_action: string;
+  contract_renewal?: string | null;   // e.g. "6 months", "annual"
   contacts?: Contact[];
   customer_engagements?: Engagement[];
 }
@@ -186,6 +187,17 @@ export default function PipelineView() {
     setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, notes } : a));
     if (selectedAccount?.id === accountId) {
       setSelectedAccount((prev) => prev ? { ...prev, notes } : null);
+    }
+  }
+
+  async function updateAccountFields(accountId: string, patch: Partial<Account>) {
+    const supabase = createClient();
+    await supabase.from("pipeline_accounts")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", accountId);
+    setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, ...patch } : a));
+    if (selectedAccount?.id === accountId) {
+      setSelectedAccount((prev) => prev ? { ...prev, ...patch } : null);
     }
   }
 
@@ -485,6 +497,7 @@ export default function PipelineView() {
           onClose={() => setSelectedAccount(null)}
           onMove={moveAccount}
           onNotesUpdate={updateAccountNotes}
+          onAccountUpdate={updateAccountFields}
           showEngForm={showEngForm}
           setShowEngForm={setShowEngForm}
           engForm={engForm}
@@ -583,7 +596,7 @@ function KanbanCard({ account, lane, stages, onSelect, onMove }: {
 // ── AccountDrawer ──────────────────────────────────────────────────────────────
 
 function AccountDrawer({
-  account, onClose, onMove, onNotesUpdate,
+  account, onClose, onMove, onNotesUpdate, onAccountUpdate,
   showEngForm, setShowEngForm,
   engForm, setEngForm,
   onAddEngagement, engSaving,
@@ -592,6 +605,7 @@ function AccountDrawer({
   onClose: () => void;
   onMove: (id: string, status: string) => void;
   onNotesUpdate: (id: string, notes: string) => Promise<void>;
+  onAccountUpdate: (id: string, patch: Partial<Account>) => Promise<void>;
   showEngForm: boolean;
   setShowEngForm: (v: boolean) => void;
   engForm: {
@@ -611,6 +625,28 @@ function AccountDrawer({
 
   // Sync if account changes (e.g. switching accounts)
   React.useEffect(() => { setNotesText(account.notes || ""); setNotesEditing(false); }, [account.id]);
+
+  // ── Account meta inline editing state ───────────────────────────────────
+  const [editingField, setEditingField] = React.useState<string | null>(null);
+  const [fieldDraft, setFieldDraft]     = React.useState<string>("");
+
+  function startEditField(field: string, currentValue: string | number | null) {
+    setEditingField(field);
+    setFieldDraft(currentValue != null ? String(currentValue) : "");
+  }
+
+  async function commitFieldEdit(field: string) {
+    if (editingField !== field) return;
+    setEditingField(null);
+    let value: string | number | null = fieldDraft.trim() || null;
+    if (field === "revenue_potential") value = fieldDraft ? parseFloat(fieldDraft) || 0 : 0;
+    await onAccountUpdate(account.id, { [field]: value } as Partial<Account>);
+  }
+
+  function cancelFieldEdit() { setEditingField(null); }
+
+  // Reset when switching accounts
+  React.useEffect(() => { setEditingField(null); }, [account.id]);
 
   // ── Engagement inline editing state ──────────────────────────────────────
   const [editingEngId, setEditingEngId] = React.useState<string | null>(null);
@@ -726,32 +762,117 @@ function AccountDrawer({
             </div>
           </div>
 
-          {/* Meta grid */}
+          {/* Meta grid — all fields inline-editable */}
           <div className="grid grid-cols-2 gap-4">
-            {[
-              ["Category", account.category],
-              ["Location", [account.city, account.country].filter(Boolean).join(", ") || "—"],
-              ["Region", account.region || "—"],
-              ["Priority", account.priority || "—"],
-              ["ICP Segment", account.icp_segment || "—"],
-              ["Revenue Potential",
-                account.revenue_potential > 0
-                  ? `€${account.revenue_potential.toLocaleString()}`
-                  : "—"],
-              ["Last Touch", account.last_touch || "—"],
-              ["Next Action", account.next_action || "—"],
-            ].map(([label, value]) => (
-              <div key={label}>
+
+            {/* Text fields */}
+            {([
+              ["category",    "Category",       account.category],
+              ["icp_segment", "ICP Segment",     account.icp_segment],
+              ["city",        "City",            account.city],
+              ["country",     "Country",         account.country],
+              ["region",      "Region",          account.region],
+              ["next_action", "Next Action",     account.next_action],
+              ["last_touch",  "Last Touch",      account.last_touch],
+              ["website",     "Website",         account.website],
+              ["contract_renewal", "Contract Renewal", account.contract_renewal],
+            ] as [string, string, string | null][]).map(([field, label, val]) => (
+              <div key={field} className={field === "next_action" || field === "website" ? "col-span-2" : ""}>
                 <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5 mb-1">{label}</div>
-                <div className="text-sm text-white">{value}</div>
+                {editingField === field ? (
+                  <input
+                    autoFocus
+                    value={fieldDraft}
+                    onChange={(e) => setFieldDraft(e.target.value)}
+                    onBlur={() => commitFieldEdit(field)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitFieldEdit(field);
+                      if (e.key === "Escape") cancelFieldEdit();
+                    }}
+                    placeholder={label}
+                    className="w-full bg-dark-3 border border-gold/50 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                  />
+                ) : (
+                  <div
+                    onClick={() => startEditField(field, val)}
+                    title="Click to edit"
+                    className="text-sm text-white cursor-text hover:bg-dark-3 rounded px-1 py-0.5 -mx-1 transition-colors group flex items-center gap-1 min-h-[24px]"
+                  >
+                    <span className={val ? (field === "website" ? "text-gold" : "") : "text-dark-5 italic"}>
+                      {val || "—"}
+                    </span>
+                    <svg className="w-2.5 h-2.5 text-dark-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                    </svg>
+                  </div>
+                )}
               </div>
             ))}
-            {account.website && (
-              <div className="col-span-2">
-                <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5 mb-1">Website</div>
-                <div className="text-sm text-gold">{account.website}</div>
-              </div>
-            )}
+
+            {/* Priority — select */}
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5 mb-1">Priority</div>
+              {editingField === "priority" ? (
+                <select
+                  autoFocus
+                  value={fieldDraft}
+                  onChange={(e) => setFieldDraft(e.target.value)}
+                  onBlur={() => commitFieldEdit("priority")}
+                  className="bg-dark-3 border border-gold/50 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                >
+                  {["P0","P1","P2","P3"].map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : (
+                <div
+                  onClick={() => startEditField("priority", account.priority)}
+                  title="Click to edit"
+                  className="cursor-pointer group flex items-center gap-1"
+                >
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                    account.priority === "P0" ? "bg-red-500/20 text-red-400" :
+                    account.priority === "P1" ? "bg-amber-500/20 text-amber-400" :
+                    "bg-dark-3 text-dark-5"
+                  }`}>{account.priority || "—"}</span>
+                  <svg className="w-2.5 h-2.5 text-dark-5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Revenue Potential — number */}
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5 mb-1">Revenue Potential (€)</div>
+              {editingField === "revenue_potential" ? (
+                <input
+                  autoFocus
+                  type="number"
+                  value={fieldDraft}
+                  onChange={(e) => setFieldDraft(e.target.value)}
+                  onBlur={() => commitFieldEdit("revenue_potential")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitFieldEdit("revenue_potential");
+                    if (e.key === "Escape") cancelFieldEdit();
+                  }}
+                  placeholder="0"
+                  className="w-full bg-dark-3 border border-gold/50 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                />
+              ) : (
+                <div
+                  onClick={() => startEditField("revenue_potential", account.revenue_potential)}
+                  title="Click to edit"
+                  className="text-sm text-white cursor-text hover:bg-dark-3 rounded px-1 py-0.5 -mx-1 transition-colors group flex items-center gap-1 min-h-[24px]"
+                >
+                  <span className={account.revenue_potential > 0 ? "text-green-400 font-semibold" : "text-dark-5 italic"}>
+                    {account.revenue_potential > 0 ? `€${account.revenue_potential.toLocaleString()}` : "—"}
+                  </span>
+                  <svg className="w-2.5 h-2.5 text-dark-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Notes — always editable regardless of status */}

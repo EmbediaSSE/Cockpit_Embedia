@@ -236,6 +236,26 @@ export interface WidgetPreference {
   size_override: string | null;
 }
 
+// ── Cowork Task Queue ─────────────────────────────────────────────────────────
+export type CoworkTaskPriority = "urgent" | "standard";
+export type CoworkTaskStatus   = "pending" | "processing" | "done" | "failed";
+export type CoworkTaskType     = "research" | "document" | "analysis" | "email" | "deck" | "other";
+
+export interface CoworkTask {
+  id:             string;
+  type:           CoworkTaskType;
+  title:          string;
+  payload:        Record<string, unknown>;
+  priority:       CoworkTaskPriority;
+  status:         CoworkTaskStatus;
+  result:         string | null;
+  error:          string | null;
+  requested_by:   string | null;
+  created_at:     string;
+  processing_at:  string | null;
+  processed_at:   string | null;
+}
+
 // Panel types for DetailPanel
 export type PanelType = "project" | "task" | "milestone" | "account" | "decision" | "agent" | "news" | "content";
 
