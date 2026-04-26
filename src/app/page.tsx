@@ -353,7 +353,7 @@ function DashboardInner() {
               </div>
 
               {/* Charts Row */}
-              <DashboardCharts />
+              <DashboardCharts onBarClick={(code) => openPanel("project", code)} />
 
               {/* Critical Now */}
               <SectionTitle>Critical Now</SectionTitle>

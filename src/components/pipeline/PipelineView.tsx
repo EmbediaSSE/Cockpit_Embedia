@@ -612,6 +612,67 @@ function AccountDrawer({
   // Sync if account changes (e.g. switching accounts)
   React.useEffect(() => { setNotesText(account.notes || ""); setNotesEditing(false); }, [account.id]);
 
+  // ── Engagement inline editing state ──────────────────────────────────────
+  const [editingEngId, setEditingEngId] = React.useState<string | null>(null);
+  const [editEng, setEditEng] = React.useState<{
+    code: string; name: string; type: Engagement["type"];
+    outcome: Engagement["outcome"]; value: string; date: string; lost_reason: string; notes: string;
+  }>({ code: "", name: "", type: "delivery", outcome: "active", value: "", date: "", lost_reason: "", notes: "" });
+  const [engEditSaving, setEngEditSaving] = React.useState(false);
+  const [engEngagements, setEngEngagements] = React.useState<Engagement[]>(account.customer_engagements || []);
+
+  // Sync local engagement list when account changes
+  React.useEffect(() => { setEngEngagements(account.customer_engagements || []); setEditingEngId(null); }, [account.id]);
+
+  function startEditEng(eng: Engagement) {
+    setEditingEngId(eng.id);
+    setEditEng({
+      code:        eng.code || "",
+      name:        eng.name,
+      type:        eng.type,
+      outcome:     eng.outcome,
+      value:       eng.value > 0 ? String(eng.value) : "",
+      date:        eng.date || "",
+      lost_reason: eng.lost_reason || "",
+      notes:       eng.notes || "",
+    });
+    setShowEngForm(false); // close add form if open
+  }
+
+  async function saveEngEdit() {
+    if (!editingEngId || !editEng.name) return;
+    setEngEditSaving(true);
+    const supabase = createClient();
+    const patch = {
+      code:        editEng.code || "",
+      name:        editEng.name,
+      type:        editEng.type,
+      outcome:     editEng.type === "historical" ? ("won" as Engagement["outcome"]) : editEng.outcome,
+      value:       editEng.value ? parseFloat(editEng.value) : 0,
+      date:        editEng.date || null,
+      lost_reason: editEng.lost_reason || null,
+      notes:       editEng.notes || "",
+    };
+    const { data, error } = await supabase
+      .from("customer_engagements")
+      .update(patch)
+      .eq("id", editingEngId)
+      .select()
+      .single();
+    if (!error && data) {
+      setEngEngagements((prev) => prev.map((e) => e.id === editingEngId ? { ...e, ...patch } : e));
+    }
+    setEngEditSaving(false);
+    setEditingEngId(null);
+  }
+
+  async function deleteEng(engId: string) {
+    if (!confirm("Delete this engagement? This cannot be undone.")) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("customer_engagements").delete().eq("id", engId);
+    if (!error) setEngEngagements((prev) => prev.filter((e) => e.id !== engId));
+  }
+
   async function saveNotes() {
     setNotesSaving(true);
     await onNotesUpdate(account.id, notesText);
@@ -619,8 +680,8 @@ function AccountDrawer({
     setNotesEditing(false);
   }
 
-  // ── Won / Historical revenue total ───────────────────────────────────────
-  const wonRevenue = (account.customer_engagements || [])
+  // ── Won / Historical revenue total — uses local editable list ───────────
+  const wonRevenue = engEngagements
     .filter((e) => e.outcome === "won" || e.type === "historical")
     .reduce((sum, e) => sum + (e.value || 0), 0);
 
@@ -761,10 +822,10 @@ function AccountDrawer({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="text-[9px] font-bold uppercase tracking-wider text-dark-5">
-                  Engagements ({(account.customer_engagements || []).length})
+                  Engagements ({engEngagements.length})
                 </div>
                 <button
-                  onClick={() => setShowEngForm(!showEngForm)}
+                  onClick={() => { setShowEngForm(!showEngForm); setEditingEngId(null); }}
                   className="text-[9px] font-bold text-grey hover:text-gold transition-colors flex items-center gap-1"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -775,40 +836,145 @@ function AccountDrawer({
               </div>
 
               {/* Engagement list */}
-              {(account.customer_engagements || []).length > 0 ? (
+              {engEngagements.length > 0 ? (
                 <div className="space-y-2 mb-3">
-                  {(account.customer_engagements || []).map((eng) => (
-                    <div key={eng.id} className={`rounded-lg p-3 ${eng.type === "historical" ? "bg-green/5 border border-green/20" : "bg-dark-3"}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          {eng.code && <span className="text-[9px] text-dark-5 font-mono">{eng.code}</span>}
-                          <span className="text-sm font-semibold text-white">{eng.name}</span>
-                          {eng.type === "historical" && (
-                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green/20 text-green">Historical</span>
+                  {engEngagements.map((eng) => (
+                    <div key={eng.id}>
+                      {/* ── View mode ── */}
+                      {editingEngId !== eng.id ? (
+                        <div className={`rounded-lg p-3 ${eng.type === "historical" ? "bg-green/5 border border-green/20" : "bg-dark-3"}`}>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              {eng.code && <span className="text-[9px] text-dark-5 font-mono shrink-0">{eng.code}</span>}
+                              <span className="text-sm font-semibold text-white">{eng.name}</span>
+                              {eng.type === "historical" && (
+                                <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-green/20 text-green shrink-0">Historical</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {eng.type !== "historical" && <span className="text-[9px] text-dark-5">{typeLabel(eng.type)}</span>}
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${engagementOutcomeBadge(eng.outcome)}`}>
+                                {eng.outcome.replace("_", " ")}
+                              </span>
+                              {/* Edit button */}
+                              <button
+                                onClick={() => startEditEng(eng)}
+                                title="Edit engagement"
+                                className="ml-1 p-0.5 text-dark-5 hover:text-gold transition-colors"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                                </svg>
+                              </button>
+                              {/* Delete button */}
+                              <button
+                                onClick={() => deleteEng(eng.id)}
+                                title="Delete engagement"
+                                className="p-0.5 text-dark-5 hover:text-red-400 transition-colors"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          {eng.value > 0 && (
+                            <div className="text-[10px] text-grey">Value: €{eng.value.toLocaleString()}</div>
                           )}
+                          {eng.lost_reason && (
+                            <div className="text-[10px] text-red-400 mt-1">Lost: {eng.lost_reason}</div>
+                          )}
+                          {eng.notes && <div className="text-[10px] text-dark-5 mt-1">{eng.notes}</div>}
+                          {eng.date && <div className="text-[9px] text-dark-5 mt-1">{eng.date}</div>}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          {eng.type !== "historical" && <span className="text-[9px] text-dark-5">{typeLabel(eng.type)}</span>}
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${engagementOutcomeBadge(eng.outcome)}`}>
-                            {eng.outcome.replace("_", " ")}
-                          </span>
+                      ) : (
+                        /* ── Edit mode ── */
+                        <div className="bg-dark-3 rounded-lg p-4 border border-gold/30 space-y-3">
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-gold">Edit Engagement</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              placeholder="Code"
+                              value={editEng.code}
+                              onChange={(e) => setEditEng({ ...editEng, code: e.target.value })}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                            />
+                            <input
+                              placeholder="Engagement name *"
+                              value={editEng.name}
+                              onChange={(e) => setEditEng({ ...editEng, name: e.target.value })}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                            />
+                            <select
+                              value={editEng.type}
+                              onChange={(e) => {
+                                const t = e.target.value as Engagement["type"];
+                                setEditEng({ ...editEng, type: t, outcome: t === "historical" ? "won" : editEng.outcome });
+                              }}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white"
+                            >
+                              <option value="delivery">Delivery</option>
+                              <option value="rfq">RFQ</option>
+                              <option value="retainer">Retainer</option>
+                              <option value="advisory">Advisory</option>
+                              <option value="historical">Historical (aggregate)</option>
+                            </select>
+                            <select
+                              value={editEng.outcome}
+                              disabled={editEng.type === "historical"}
+                              onChange={(e) => setEditEng({ ...editEng, outcome: e.target.value as Engagement["outcome"] })}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white disabled:opacity-50"
+                            >
+                              <option value="active">Active</option>
+                              <option value="won">Won</option>
+                              <option value="lost">Lost</option>
+                              <option value="on_hold">On Hold</option>
+                            </select>
+                            <input
+                              placeholder="Value (€)"
+                              value={editEng.value}
+                              onChange={(e) => setEditEng({ ...editEng, value: e.target.value })}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                              type="number"
+                            />
+                            <input
+                              placeholder="Date"
+                              value={editEng.date}
+                              onChange={(e) => setEditEng({ ...editEng, date: e.target.value })}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5"
+                              type="date"
+                            />
+                            {editEng.outcome === "lost" && (
+                              <input
+                                placeholder="Why lost?"
+                                value={editEng.lost_reason}
+                                onChange={(e) => setEditEng({ ...editEng, lost_reason: e.target.value })}
+                                className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-2"
+                              />
+                            )}
+                            <textarea
+                              placeholder="Notes"
+                              value={editEng.notes}
+                              onChange={(e) => setEditEng({ ...editEng, notes: e.target.value })}
+                              rows={2}
+                              className="bg-dark-2 border border-dark-4 rounded px-2 py-1.5 text-xs text-white placeholder-dark-5 col-span-2 resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => setEditingEngId(null)}
+                              className="px-3 py-1.5 text-xs text-grey hover:text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={saveEngEdit}
+                              disabled={engEditSaving || !editEng.name}
+                              className="px-4 py-1.5 bg-gold text-dark text-xs font-bold rounded hover:bg-gold/90 disabled:opacity-50 transition-all"
+                            >
+                              {engEditSaving ? "Saving…" : "Save Changes"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      {eng.value > 0 && (
-                        <div className="text-[10px] text-grey">
-                          Value: €{eng.value.toLocaleString()}
-                        </div>
-                      )}
-                      {eng.lost_reason && (
-                        <div className="text-[10px] text-red-400 mt-1">
-                          Lost: {eng.lost_reason}
-                        </div>
-                      )}
-                      {eng.notes && (
-                        <div className="text-[10px] text-dark-5 mt-1">{eng.notes}</div>
-                      )}
-                      {eng.date && (
-                        <div className="text-[9px] text-dark-5 mt-1">{eng.date}</div>
                       )}
                     </div>
                   ))}

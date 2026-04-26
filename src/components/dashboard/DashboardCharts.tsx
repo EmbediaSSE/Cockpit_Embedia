@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RevenueBar {
-  name: string;
+  name: string;     // display label (truncated code)
+  code: string;     // full project code for drill-through
   revenue: number;
   margin: number;
   stage?: string;
@@ -57,7 +58,7 @@ const STAGE_COLORS: Record<string, string> = {
 
 // ── SVG Bar Chart ─────────────────────────────────────────────────────────────
 
-function BarChart({ data }: { data: RevenueBar[] }) {
+function BarChart({ data, onBarClick }: { data: RevenueBar[]; onBarClick?: (code: string) => void }) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-40 text-grey text-sm">
@@ -112,8 +113,21 @@ function BarChart({ data }: { data: RevenueBar[] }) {
         const h = Math.max((d.revenue / maxVal) * plotH, 2);
         const y = chartH - padB - h;
         const opacity = 0.75 + (i === 0 ? 0.25 : 0);
+        const barColor = d.stage === "Won" ? "#F5A623" : "#C47D0E";
+        const clickable = !!onBarClick;
         return (
-          <g key={d.name}>
+          <g
+            key={d.code}
+            onClick={clickable ? () => onBarClick!(d.code) : undefined}
+            style={{ cursor: clickable ? "pointer" : "default" }}
+            role={clickable ? "button" : undefined}
+            aria-label={clickable ? `Open ${d.code} — €${d.revenue.toLocaleString()}` : undefined}
+          >
+            {/* Invisible hit-area covering full column */}
+            <rect
+              x={x - 4} y={padT - 4} width={barW + 8} height={plotH + 4}
+              fill="transparent"
+            />
             {/* Bar background (ghost) */}
             <rect
               x={x} y={padT} width={barW} height={plotH}
@@ -123,7 +137,7 @@ function BarChart({ data }: { data: RevenueBar[] }) {
             <rect
               x={x} y={y} width={barW} height={h}
               rx={4}
-              fill={data[i]?.stage === "Won" ? "#F5A623" : "#C47D0E"}
+              fill={barColor}
               opacity={opacity}
             >
               <animate
@@ -144,10 +158,12 @@ function BarChart({ data }: { data: RevenueBar[] }) {
             >
               {d.revenue >= 1000 ? `€${(d.revenue / 1000).toFixed(0)}k` : `€${d.revenue}`}
             </text>
-            {/* X label */}
+            {/* X label — underlined when clickable */}
             <text
               x={x + barW / 2} y={chartH - 8}
-              textAnchor="middle" fontSize={9} fill="#8E8E93"
+              textAnchor="middle" fontSize={9}
+              fill={clickable ? "#C0C0C6" : "#8E8E93"}
+              textDecoration={clickable ? "underline" : undefined}
             >
               {d.name.length > 8 ? d.name.slice(0, 7) + "…" : d.name}
             </text>
@@ -226,7 +242,7 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function DashboardCharts() {
+export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectCode: string) => void } = {}) {
   const [data, setData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -255,6 +271,7 @@ export default function DashboardCharts() {
         .sort((a, b) => b.selling_price - a.selling_price)
         .slice(0, 7)
         .map((p) => ({
+          code:    p.code || p.name?.slice(0, 10) || "—",
           name:    p.code || p.name?.slice(0, 10) || "—",
           revenue: p.selling_price,
           margin:  p.margin_pct ?? 0,
@@ -341,7 +358,7 @@ export default function DashboardCharts() {
             <div className="text-[10px] text-grey">total</div>
           </div>
         </div>
-        <BarChart data={revenueData} />
+        <BarChart data={revenueData} onBarClick={onBarClick} />
       </div>
 
       {/* ── Right column: Donut + Status bars ─────────────────── */}
