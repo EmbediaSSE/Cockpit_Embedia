@@ -391,7 +391,7 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
   const filteredEngs = revenueFilter === "all"
     ? engagements.filter(e => e.outcome === "won" || e.type === "historical")
     : engagements.filter(e =>
-        e.outcome === "won" &&
+        (e.outcome === "won" || e.outcome === "active") &&
         e.type !== "historical" &&
         e.date != null &&
         new Date(e.date).getFullYear() === (revenueFilter as number)
@@ -419,16 +419,18 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
     .filter(e => e.outcome === "won" || e.type === "historical")
     .reduce((s, e) => s + (e.value || 0), 0);
   const cyTotal = engagements
-    .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === currentYear)
+    .filter(e => (e.outcome === "won" || e.outcome === "active") && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === currentYear)
     .reduce((s, e) => s + (e.value || 0), 0);
   const pyTotal = engagements
-    .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === prevYear)
+    .filter(e => (e.outcome === "won" || e.outcome === "active") && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === prevYear)
     .reduce((s, e) => s + (e.value || 0), 0);
 
-  const filterOptions: { key: YearFilter; label: string; sub: string }[] = [
-    { key: "all",       label: "All time",        sub: fmtK(allGross) },
-    { key: currentYear, label: String(currentYear), sub: fmtK(cyTotal) },
-    { key: prevYear,    label: String(prevYear),    sub: fmtK(pyTotal) },
+  // Order: past years left → current year → future (active)
+  // Pills: prev year | current year | All time
+  const filterOptions: { key: YearFilter; label: string; sub: string; note?: string }[] = [
+    { key: prevYear,    label: String(prevYear),    sub: fmtK(pyTotal),  note: "won" },
+    { key: currentYear, label: String(currentYear), sub: fmtK(cyTotal),  note: "won + active" },
+    { key: "all",       label: "All time",          sub: fmtK(allGross), note: "gross" },
   ];
 
   return (
@@ -451,48 +453,56 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
           </div>
         </div>
 
-        {/* Year filter pills */}
-        <div className="flex gap-2 mb-4">
-          {filterOptions.map(opt => (
-            <button
-              key={String(opt.key)}
-              onClick={() => setRevenueFilter(opt.key)}
-              className={`flex flex-col items-start px-3 py-2 rounded-lg border transition-all ${
-                revenueFilter === opt.key
-                  ? "border-green/50 bg-green/10 text-white"
-                  : "border-dark-4 bg-dark-3 text-grey hover:border-dark-3 hover:text-white"
-              }`}
-            >
-              <span className={`text-[10px] font-bold ${revenueFilter === opt.key ? "text-green" : "text-grey"}`}>
-                {opt.label}
-              </span>
-              <span className={`text-sm font-bold mt-0.5 ${revenueFilter === opt.key ? "text-white" : "text-dark-5"}`}>
-                {opt.sub}
-              </span>
-            </button>
-          ))}
+        {/* Year filter — proper tab buttons, past → present → all time */}
+        <div className="flex gap-1.5 mb-4 bg-dark-3 p-1 rounded-lg w-fit">
+          {filterOptions.map(opt => {
+            const active = revenueFilter === opt.key;
+            return (
+              <button
+                key={String(opt.key)}
+                onClick={() => setRevenueFilter(opt.key)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all ${
+                  active
+                    ? "bg-dark-1 border border-dark-4 shadow"
+                    : "hover:bg-dark-2"
+                }`}
+              >
+                <span className={`text-xs font-bold ${active ? "text-white" : "text-grey"}`}>
+                  {opt.label}
+                </span>
+                <span className={`text-xs font-bold ${
+                  active
+                    ? opt.key === "all" ? "text-green" : "text-gold"
+                    : "text-dark-5"
+                }`}>
+                  {opt.sub}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Chart */}
         <EngagementBarChart
           data={engBars}
-          onBarClick={(accountId, name) => {
-            router.push(`/pipeline?account=${encodeURIComponent(name)}`);
-          }}
         />
 
-        {/* Footer link */}
+        {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-4">
-          <span className="text-[10px] text-grey">Click any bar to open the account in Pipeline</span>
-          <button
-            onClick={() => router.push("/pipeline")}
+          <span className="text-[10px] text-grey">
+            {revenueFilter === "all"
+              ? "Won + historical engagements across all accounts"
+              : `Won & active engagements dated in ${revenueFilter}`}
+          </span>
+          <a
+            href="/pipeline"
             className="text-[10px] font-bold text-gold hover:text-gold/80 transition-colors flex items-center gap-1"
           >
-            Open Pipeline
+            BD Pipeline
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
-          </button>
+          </a>
         </div>
       </div>
 
