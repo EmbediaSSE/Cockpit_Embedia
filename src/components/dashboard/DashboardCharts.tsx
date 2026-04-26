@@ -25,12 +25,19 @@ interface StatusBar {
   color: string;
 }
 
+interface EngagementRevenue {
+  currentYear: number;
+  prevYear: number;
+  totalGross: number;
+}
+
 interface ChartData {
   revenueData: RevenueBar[];
   pipelineData: PipelineSlice[];
   statusData: StatusBar[];
   totalAccounts: number;
   totalRevenue: number;
+  engRevenue: EngagementRevenue;
 }
 
 // ── Color map for pipeline stages ─────────────────────────────────────────────
@@ -250,17 +257,36 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
     async function load() {
       const supabase = createClient();
 
-      const [projectsRes, pipelineRes] = await Promise.all([
+      const [projectsRes, pipelineRes, engRes] = await Promise.all([
         supabase
           .from("projects")
           .select("code, name, selling_price, margin_pct, status, stage"),
         supabase
           .from("pipeline_accounts")
           .select("status, swimlane"),
+        supabase
+          .from("customer_engagements")
+          .select("outcome, type, value, date"),
       ]);
 
-      const projects = projectsRes.data ?? [];
-      const accounts = pipelineRes.data ?? [];
+      const projects    = projectsRes.data ?? [];
+      const accounts    = pipelineRes.data ?? [];
+      const engagements = engRes.data ?? [];
+
+      // ── Engagement revenue by year ────────────────────────────
+      const cy  = new Date().getFullYear();
+      const py  = cy - 1;
+      const engRevenue: EngagementRevenue = {
+        currentYear: engagements
+          .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === cy)
+          .reduce((s: number, e: { value: number }) => s + (e.value || 0), 0),
+        prevYear: engagements
+          .filter(e => e.outcome === "won" && e.type !== "historical" && e.date && new Date(e.date).getFullYear() === py)
+          .reduce((s: number, e: { value: number }) => s + (e.value || 0), 0),
+        totalGross: engagements
+          .filter(e => e.outcome === "won" || e.type === "historical")
+          .reduce((s: number, e: { value: number }) => s + (e.value || 0), 0),
+      };
 
       // ── Revenue bars: Won + Active only — exclude Lost, Planned, Concept ──
       // Lost RFQs and pipeline opportunities must not inflate confirmed revenue.
@@ -308,7 +334,7 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
         { name: "Done",    value: doneCount,    color: "#8E8E93" },
       ].filter((d) => d.value > 0);
 
-      setData({ revenueData, pipelineData, statusData, totalAccounts, totalRevenue });
+      setData({ revenueData, pipelineData, statusData, totalAccounts, totalRevenue, engRevenue });
       setLoading(false);
     }
 
@@ -330,15 +356,18 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
 
   if (!data) return null;
 
-  const { revenueData, pipelineData, statusData, totalAccounts, totalRevenue } = data;
+  const { revenueData, pipelineData, statusData, totalAccounts, totalRevenue, engRevenue } = data;
   const totalStatusCount = statusData.reduce((s, d) => s + d.value, 0);
+  const cy = new Date().getFullYear();
+  const py = cy - 1;
+  const fmtK = (v: number) => v === 0 ? "—" : v >= 1000 ? `€${(v / 1000).toFixed(0)}k` : `€${v}`;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
       {/* ── Revenue Bar Chart ──────────────────────────────────── */}
       <div className="lg:col-span-2 bg-dark-2 rounded-xl border border-dark-4 p-5">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-sm font-semibold text-white">Confirmed Revenue</div>
             <div className="flex items-center gap-3 mt-1">
@@ -357,9 +386,34 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
                 ? `€${(totalRevenue / 1000).toFixed(0)}k`
                 : `€${totalRevenue}`}
             </div>
-            <div className="text-[10px] text-grey">total</div>
+            <div className="text-[10px] text-grey">active pipeline</div>
           </div>
         </div>
+
+        {/* Year breakdown strip — from customer engagements */}
+        {engRevenue.totalGross > 0 && (
+          <div className="grid grid-cols-3 divide-x divide-dark-4 bg-dark-3 rounded-lg mb-4">
+            <div className="px-4 py-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-0.5">{cy}</div>
+              <div className={`text-base font-bold ${engRevenue.currentYear > 0 ? "text-green" : "text-dark-5"}`}>
+                {fmtK(engRevenue.currentYear)}
+              </div>
+            </div>
+            <div className="px-4 py-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-0.5">{py}</div>
+              <div className={`text-base font-bold ${engRevenue.prevYear > 0 ? "text-green" : "text-dark-5"}`}>
+                {fmtK(engRevenue.prevYear)}
+              </div>
+            </div>
+            <div className="px-4 py-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-green/70 mb-0.5">Total gross</div>
+              <div className="text-base font-bold text-green">
+                {fmtK(engRevenue.totalGross)}
+              </div>
+            </div>
+          </div>
+        )}
+
         <BarChart data={revenueData} onBarClick={onBarClick} />
       </div>
 
