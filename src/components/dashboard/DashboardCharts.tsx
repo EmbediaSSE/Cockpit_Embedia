@@ -265,9 +265,11 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
       // ── Revenue bars: Won + Active only — exclude Lost, Planned, Concept ──
       // Lost RFQs and pipeline opportunities must not inflate confirmed revenue.
       const REVENUE_STAGES = ["Won", "Active"];
+      const EXCLUDED_STATUSES = ["cancelled", "on_hold"];
       const revenueData: RevenueBar[] = projects
         .filter((p) => (p.selling_price ?? 0) > 0)
         .filter((p) => REVENUE_STAGES.includes(p.stage ?? ""))
+        .filter((p) => !EXCLUDED_STATUSES.includes((p.status ?? "").toLowerCase()))
         .sort((a, b) => b.selling_price - a.selling_price)
         .slice(0, 7)
         .map((p) => ({

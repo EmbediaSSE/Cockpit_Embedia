@@ -373,8 +373,11 @@ function ProjectPanel({ data, openPanel, editMode }: { data: ProjectPanelData; o
     { value: "cancelled", label: "Cancelled" },
   ];
   // Category-aware stage options — sourced from the same STAGES map used in AddProjectModal
-  const stageOptions = (STAGES[data.category] ?? Object.values(STAGES).flat())
-    .map(s => ({ value: s, label: s }));
+  // Always ensure: (a) current value is present, (b) "Lost" and "Cancelled" are always available
+  const universalStages = ["Lost", "Cancelled", "On Hold"];
+  const categoryStages = STAGES[data.category] ?? Object.values(STAGES).flat();
+  const allStages = Array.from(new Set([...categoryStages, ...universalStages, data.stage]));
+  const stageOptions = allStages.map(s => ({ value: s, label: s }));
   const priorityOptions = [
     { value: "P0", label: "P0 — Critical" },
     { value: "P1", label: "P1 — High" },
