@@ -104,8 +104,9 @@ export default function SprintBoardView() {
   const { openPanel } = usePanel();
   const [tasks, setTasks] = useState<SprintTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [filterEpic, setFilterEpic] = useState<string>("all");
-  const [filterSprint, setFilterSprint] = useState<string>("Sprint 1");
+  const [filterSprint, setFilterSprint] = useState<string>("all");
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
 
@@ -120,10 +121,13 @@ export default function SprintBoardView() {
         `)
         .order("task_code", { ascending: true });
 
-      setTasks((data || []).map((t: Record<string, unknown>) => ({
-        ...t,
-        stage: (t.wbs_stages as { name: string; projects: { code: string; name: string } } | null) || undefined,
-      })) as SprintTask[]);
+      setTasks((data || []).map((t: Record<string, unknown>) => {
+        const ws = t.wbs_stages as { name: string; projects: { code: string; name: string } } | null;
+        return {
+          ...t,
+          stage: ws ? { name: ws.name, project: ws.projects } : undefined,
+        };
+      }) as SprintTask[]);
       setLoading(false);
     }
     load();
@@ -178,13 +182,29 @@ export default function SprintBoardView() {
     return <div className="text-center py-20 text-grey text-sm">Loading sprint board…</div>;
   }
 
-  const sprints = Array.from(new Set(tasks.map((t) => t.sprint_name).filter(Boolean))).sort() as string[];
-  const epics   = Array.from(new Set(tasks.map((t) => t.epic).filter(Boolean))).sort() as string[];
+  const projects = Array.from(
+    new Map(
+      tasks
+        .filter((t) => t.stage?.project)
+        .map((t) => [t.stage!.project!.code, t.stage!.project!])
+    ).values()
+  ).sort((a, b) => a.code.localeCompare(b.code));
+
+  const sprints = Array.from(new Set(tasks
+    .filter((t) => filterProject === "all" || t.stage?.project?.code === filterProject)
+    .map((t) => t.sprint_name).filter(Boolean)
+  )).sort() as string[];
+
+  const epics = Array.from(new Set(tasks
+    .filter((t) => filterProject === "all" || t.stage?.project?.code === filterProject)
+    .map((t) => t.epic).filter(Boolean)
+  )).sort() as string[];
 
   const filtered = tasks.filter(
     (t) =>
-      (filterSprint === "all" || t.sprint_name === filterSprint) &&
-      (filterEpic   === "all" || t.epic === filterEpic)
+      (filterProject === "all" || t.stage?.project?.code === filterProject) &&
+      (filterSprint  === "all" || t.sprint_name === filterSprint) &&
+      (filterEpic    === "all" || t.epic === filterEpic)
   );
 
   const grouped = COLUMNS.map((col) => ({
@@ -202,7 +222,11 @@ export default function SprintBoardView() {
       {/* Sprint Header */}
       <div className="bg-dark-2 rounded-xl border border-dark-4 px-5 py-4 mb-5 flex items-center gap-6">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">Active Sprint</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-dark-5 mb-0.5">
+            {filterProject !== "all"
+              ? projects.find((p) => p.code === filterProject)?.name ?? filterProject
+              : "All Projects"}
+          </div>
           <div className="text-lg font-bold text-white">
             {filterSprint === "all" ? "All Sprints" : filterSprint}
           </div>
@@ -221,6 +245,24 @@ export default function SprintBoardView() {
         ))}
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Project filter — primary, gold-bordered when active */}
+          <select
+            value={filterProject}
+            onChange={(e) => { setFilterProject(e.target.value); setFilterSprint("all"); setFilterEpic("all"); }}
+            className={`border text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-gold transition-colors ${
+              filterProject !== "all"
+                ? "bg-gold/10 border-gold/60 text-gold"
+                : "bg-dark-3 border-dark-4 text-grey"
+            }`}
+          >
+            <option value="all">All Projects</option>
+            {projects.map((p) => (
+              <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
+            ))}
+          </select>
+
+          <div className="w-px h-4 bg-dark-4" />
+
           <select
             value={filterSprint}
             onChange={(e) => setFilterSprint(e.target.value)}

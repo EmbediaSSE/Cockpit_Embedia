@@ -322,7 +322,7 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
 
       const projects    = projectsRes.data ?? [];
       const accounts    = pipelineRes.data ?? [];
-      const engagements = (engRes.data ?? []) as EngagementRow[];
+      const engagements = (engRes.data ?? []) as unknown as EngagementRow[];
 
       // ── Project bars (active pipeline) ───────────────────────
       const REVENUE_STAGES  = ["Won", "Active"];
