@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -84,135 +83,44 @@ function fmtK(v: number): string {
   return `€${v}`;
 }
 
-// ── SVG Engagement Revenue Bar Chart ─────────────────────────────────────────
+// ── Unified Revenue + Pipeline Bar Chart ─────────────────────────────────────
+// Green bars = confirmed (won engagements), Gold bars = active pipeline projects
 
-function EngagementBarChart({
-  data,
-  onBarClick,
-}: {
-  data: RevenueBar[];
-  onBarClick?: (accountId: string, name: string) => void;
-}) {
-  if (data.length === 0) {
+interface UnifiedBar {
+  id: string;
+  label: string;
+  value: number;
+  kind: "confirmed" | "pipeline";
+  onClick?: () => void;
+}
+
+function UnifiedRevenueChart({ bars }: { bars: UnifiedBar[] }) {
+  if (bars.length === 0) {
     return (
-      <div className="flex items-center justify-center h-36 text-grey text-xs">
+      <div className="flex items-center justify-center h-40 text-grey text-xs">
         No revenue data for this period
       </div>
     );
   }
 
-  const maxVal = Math.max(...data.map((d) => d.revenue), 1);
-  const chartH = 140;
-  const barW   = 38;
-  const gap    = 14;
-  const padL   = 52;
-  const padB   = 30;
-  const padT   = 18;
-  const totalW = padL + data.length * (barW + gap) - gap + 12;
-  const plotH  = chartH - padT - padB;
+  const maxVal  = Math.max(...bars.map((b) => b.value), 1);
+  const chartH  = 150;
+  const barW    = 36;
+  const gap     = 12;
+  const padL    = 52;
+  const padB    = 32;
+  const padT    = 18;
+  const totalW  = padL + bars.length * (barW + gap) - gap + 16;
+  const plotH   = chartH - padT - padB;
 
-  const tickCount = 4;
-  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => {
-    const v = (maxVal / tickCount) * i;
-    return { v, y: chartH - padB - (v / maxVal) * plotH };
-  });
-
-  return (
-    <svg
-      viewBox={`0 0 ${totalW} ${chartH}`}
-      className="w-full"
-      style={{ height: chartH }}
-      aria-label="Revenue by account"
-    >
-      {ticks.map((t, i) => (
-        <g key={i}>
-          <line x1={padL} y1={t.y} x2={totalW} y2={t.y}
-            stroke="#2A2A2A" strokeWidth={1} strokeDasharray="3 3" />
-          <text x={padL - 6} y={t.y + 4}
-            textAnchor="end" fontSize={9} fill="#5A5A5F">
-            {fmtK(t.v)}
-          </text>
-        </g>
-      ))}
-
-      {data.map((d, i) => {
-        const x  = padL + i * (barW + gap);
-        const h  = Math.max((d.revenue / maxVal) * plotH, 2);
-        const y  = chartH - padB - h;
-        const clickable = !!onBarClick;
-        return (
-          <g
-            key={d.accountId}
-            onClick={clickable ? () => onBarClick!(d.accountId, d.name) : undefined}
-            style={{ cursor: clickable ? "pointer" : "default" }}
-          >
-            {/* Hit area */}
-            <rect x={x - 4} y={padT - 4} width={barW + 8} height={plotH + 4} fill="transparent" />
-            {/* Ghost */}
-            <rect x={x} y={padT} width={barW} height={plotH} rx={4} fill="#1E1E1E" />
-            {/* Bar */}
-            <rect x={x} y={y} width={barW} height={h} rx={4} fill="#27AE60" opacity={0.85}>
-              <animate attributeName="height" from="0" to={h}
-                dur="0.45s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
-              <animate attributeName="y" from={chartH - padB} to={y}
-                dur="0.45s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
-            </rect>
-            {/* Value */}
-            <text x={x + barW / 2} y={y - 5}
-              textAnchor="middle" fontSize={9} fill="#27AE60" fontWeight="600">
-              {fmtK(d.revenue)}
-            </text>
-            {/* Label */}
-            <text
-              x={x + barW / 2} y={chartH - 8}
-              textAnchor="middle" fontSize={9}
-              fill={clickable ? "#C0C0C6" : "#8E8E93"}
-              textDecoration={clickable ? "underline" : undefined}
-            >
-              {d.name.length > 9 ? d.name.slice(0, 8) + "…" : d.name}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-// ── SVG Project Bar Chart (active pipeline) ───────────────────────────────────
-
-function ProjectBarChart({
-  data,
-  onBarClick,
-}: {
-  data: ProjectBar[];
-  onBarClick?: (code: string) => void;
-}) {
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-36 text-grey text-xs">
-        No active project revenue
-      </div>
-    );
-  }
-
-  const maxVal = Math.max(...data.map((d) => d.revenue), 1);
-  const chartH = 140;
-  const barW   = 36;
-  const gap    = 14;
-  const padL   = 48;
-  const padB   = 28;
-  const padT   = 18;
-  const totalW = padL + data.length * (barW + gap) - gap + 8;
-  const plotH  = chartH - padT - padB;
-
-  const tickCount = 4;
-  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => {
-    const v = (maxVal / tickCount) * i;
+  const ticks = Array.from({ length: 5 }, (_, i) => {
+    const v = (maxVal / 4) * i;
     return { v, y: chartH - padB - (v / maxVal) * plotH };
   });
 
   return (
     <svg viewBox={`0 0 ${totalW} ${chartH}`} className="w-full" style={{ height: chartH }}>
+      {/* Grid lines */}
       {ticks.map((t, i) => (
         <g key={i}>
           <line x1={padL} y1={t.y} x2={totalW} y2={t.y}
@@ -222,32 +130,40 @@ function ProjectBarChart({
           </text>
         </g>
       ))}
-      {data.map((d, i) => {
-        const x = padL + i * (barW + gap);
-        const h = Math.max((d.revenue / maxVal) * plotH, 2);
-        const y = chartH - padB - h;
-        const color = d.stage === "Won" ? "#F5A623" : "#C47D0E";
+
+      {/* Bars */}
+      {bars.map((b, i) => {
+        const x     = padL + i * (barW + gap);
+        const h     = Math.max((b.value / maxVal) * plotH, 2);
+        const y     = chartH - padB - h;
+        const color = b.kind === "confirmed" ? "#27AE60" : "#F5A623";
+        const labelColor = b.kind === "confirmed" ? "#27AE60" : "#F5A623";
         return (
-          <g key={d.code}
-            onClick={onBarClick ? () => onBarClick!(d.code) : undefined}
-            style={{ cursor: onBarClick ? "pointer" : "default" }}>
+          <g key={b.id}
+            onClick={b.onClick}
+            style={{ cursor: b.onClick ? "pointer" : "default" }}>
+            {/* Hit area */}
             <rect x={x - 4} y={padT - 4} width={barW + 8} height={plotH + 4} fill="transparent" />
-            <rect x={x} y={padT} width={barW} height={plotH} rx={4} fill="#1E1E1E" />
-            <rect x={x} y={y} width={barW} height={h} rx={4} fill={color} opacity={0.8}>
+            {/* Bar */}
+            <rect x={x} y={y} width={barW} height={h} rx={4} fill={color} opacity={0.85}>
               <animate attributeName="height" from="0" to={h}
-                dur="0.5s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
+                dur="0.45s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
               <animate attributeName="y" from={chartH - padB} to={y}
-                dur="0.5s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
+                dur="0.45s" calcMode="spline" keySplines="0.4 0 0.2 1" fill="freeze" />
             </rect>
+            {/* Value label */}
             <text x={x + barW / 2} y={y - 5}
-              textAnchor="middle" fontSize={9} fill="#F5A623" fontWeight="600">
-              {fmtK(d.revenue)}
+              textAnchor="middle" fontSize={9} fill={labelColor} fontWeight="600">
+              {fmtK(b.value)}
             </text>
-            <text x={x + barW / 2} y={chartH - 8}
+            {/* X label */}
+            <text x={x + barW / 2} y={chartH - 12}
               textAnchor="middle" fontSize={9} fill="#C0C0C6"
-              textDecoration="underline">
-              {d.name.length > 8 ? d.name.slice(0, 7) + "…" : d.name}
+              textDecoration={b.onClick ? "underline" : undefined}>
+              {b.label.length > 9 ? b.label.slice(0, 8) + "…" : b.label}
             </text>
+            {/* Kind dot */}
+            <circle cx={x + barW / 2} cy={chartH - 4} r={2.5} fill={color} opacity={0.6} />
           </g>
         );
       })}
@@ -300,14 +216,18 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectCode: string) => void } = {}) {
-  const router = useRouter();
+export default function DashboardCharts({
+  onBarClick,
+  onAccountClick,
+}: {
+  onBarClick?: (projectCode: string) => void;
+  onAccountClick?: (accountId: string, accountName: string) => void;
+} = {}) {
   const [data, setData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [revenueFilter, setRevenueFilter] = useState<YearFilter>("all");
-
   const currentYear = new Date().getFullYear();
   const prevYear    = currentYear - 1;
+  const [revenueFilter, setRevenueFilter] = useState<YearFilter>(currentYear);
 
   useEffect(() => {
     async function load() {
@@ -436,19 +356,19 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-      {/* ── Confirmed Revenue — engagement-based, interactive ──── */}
+      {/* ── Revenue Overview — confirmed + pipeline, single chart ── */}
       <div className="lg:col-span-2 bg-dark-2 rounded-xl border border-dark-4 p-5">
 
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-sm font-semibold text-white">Confirmed Revenue</div>
-            <div className="text-xs text-grey mt-0.5">From won engagements · EUR</div>
+            <div className="text-sm font-semibold text-white">Revenue Overview</div>
+            <div className="text-xs text-grey mt-0.5">Confirmed &amp; active pipeline · EUR</div>
           </div>
           <div className="text-right">
-            <div className="text-xl font-bold text-green">{fmtK(engTotal)}</div>
+            <div className="text-xl font-bold text-white">{fmtK(engTotal + projectRevenue)}</div>
             <div className="text-[10px] text-grey">
-              {revenueFilter === "all" ? "all time gross" : `${revenueFilter} total`}
+              {revenueFilter === "all" ? "all time" : `${revenueFilter} · confirmed + pipeline`}
             </div>
           </div>
         </div>
@@ -482,18 +402,39 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
           })}
         </div>
 
-        {/* Chart */}
-        <EngagementBarChart
-          data={engBars}
-        />
+        {/* Unified chart — green = confirmed engagements, gold = active projects */}
+        {(() => {
+          const unifiedBars: UnifiedBar[] = [
+            ...engBars.map((b) => ({
+              id: `eng-${b.accountId}`,
+              label: b.name,
+              value: b.revenue,
+              kind: "confirmed" as const,
+              onClick: onAccountClick ? () => onAccountClick!(b.accountId, b.name) : undefined,
+            })),
+            ...projectBars.map((p) => ({
+              id: `proj-${p.code}`,
+              label: p.name,
+              value: p.revenue,
+              kind: "pipeline" as const,
+              onClick: onBarClick ? () => onBarClick!(p.code) : undefined,
+            })),
+          ].sort((a, b) => b.value - a.value);
+          return <UnifiedRevenueChart bars={unifiedBars} />;
+        })()}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-4">
-          <span className="text-[10px] text-grey">
-            {revenueFilter === "all"
-              ? "Won + historical engagements across all accounts"
-              : `Won & active engagements dated in ${revenueFilter}`}
-          </span>
+        {/* Legend + footer */}
+        <div className="flex items-center justify-between mt-2 pt-3 border-t border-dark-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-green opacity-85" />
+              <span className="text-[10px] text-grey">Confirmed · {fmtK(engTotal)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-gold opacity-85" />
+              <span className="text-[10px] text-grey">Pipeline · {fmtK(projectRevenue)}</span>
+            </div>
+          </div>
           <a
             href="/pipeline"
             className="text-[10px] font-bold text-gold hover:text-gold/80 transition-colors flex items-center gap-1"
@@ -508,20 +449,6 @@ export default function DashboardCharts({ onBarClick }: { onBarClick?: (projectC
 
       {/* ── Right column ──────────────────────────────────────── */}
       <div className="flex flex-col gap-4">
-
-        {/* Active project pipeline */}
-        <div className="bg-dark-2 rounded-xl border border-dark-4 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <div className="text-xs font-semibold text-white">Active Pipeline</div>
-              <div className="text-[10px] text-grey mt-0.5">Won &amp; Active projects</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-bold text-gold">{fmtK(projectRevenue)}</div>
-            </div>
-          </div>
-          <ProjectBarChart data={projectBars} onBarClick={onBarClick} />
-        </div>
 
         {/* BD Pipeline Donut */}
         <div className="bg-dark-2 rounded-xl border border-dark-4 p-4 flex gap-4 items-center">
