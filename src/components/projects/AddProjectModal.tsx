@@ -89,6 +89,7 @@ export default function AddProjectModal({ onClose, onCreated }: AddProjectModalP
       name:          form.name.trim(),
       client:        form.client.trim() || "Embedia",
       category:      form.category,
+      function_area: form.category,
       priority:      form.priority,
       status:        form.status,
       stage:         form.stage,

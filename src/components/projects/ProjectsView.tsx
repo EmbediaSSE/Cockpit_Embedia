@@ -372,7 +372,7 @@ export default function ProjectsView() {
         .from("projects")
         .select(`
           id, code, name, client, category, status, priority,
-          summary, selling_price, target_date,
+          stage, phase, summary, selling_price, target_date,
           wbs_stages ( id, name, sort_order, wbs_tasks ( id, status, effort_days, due_date ) ),
           project_risks ( id, level, status )
         `)
