@@ -22,6 +22,50 @@ const AI_AGENTS = [
   { id: "whitepaper", name: "White Paper Agent", type: "AI Agent", desc: "Long-form publishing, research synthesis", status: "active" },
 ];
 
+// Embedia Data Department — hired 2026-05-01
+const DATA_AGENTS = [
+  {
+    id: "data-architect",
+    name: "Data Architect",
+    emoji: "🏛️",
+    desc: "Schema design, data governance, storage tier decisions, ADRs for data",
+    skills: ["data-architecture", "data-governance", "adr-authoring"],
+    isNew: true,
+  },
+  {
+    id: "data-engineer",
+    name: "Data Engineer",
+    emoji: "⚙️",
+    desc: "Pipelines, ETL/ELT, Supabase sync, eval runners, Cloud SQL migrations",
+    skills: ["etl-pipelines", "supabase-sync", "cloud-sql"],
+    isNew: true,
+  },
+  {
+    id: "analytics-engineer",
+    name: "Analytics Engineer",
+    emoji: "📐",
+    desc: "dbt models, SQL transforms, metric definitions, Cockpit KPI views",
+    skills: ["dbt-modelling", "sql-transforms", "metric-catalogue"],
+    isNew: true,
+  },
+  {
+    id: "data-analyst",
+    name: "Data Analyst",
+    emoji: "📊",
+    desc: "KPI analysis, sprint reports, BD pipeline insights, investor data points",
+    skills: ["kpi-analysis", "sprint-reporting", "bd-pipeline"],
+    isNew: true,
+  },
+  {
+    id: "data-scientist",
+    name: "Data Scientist",
+    emoji: "🔬",
+    desc: "VibeSE evals, fine-tuning, BLEU/BERTScore, FuSa improvement, GRPO",
+    skills: ["model-evaluation", "fine-tuning", "grpo-feedback"],
+    isNew: true,
+  },
+];
+
 // Embedia AI OS — Internal Dev Team (hired 2026-04-23)
 const DEV_AGENTS = [
   {
@@ -140,6 +184,12 @@ const DEPARTMENTS = [
     color: "amber-400",
     description: "Content, brand, internal processes",
   },
+  {
+    name: "Data & Intelligence",
+    color: "cyan-400",
+    description: "Pipelines, analytics, ML evals, VibeSE data science",
+    isNew: true,
+  },
 ];
 
 export default function OrgChartView() {
@@ -161,7 +211,7 @@ export default function OrgChartView() {
 
   const activeAgents = AI_AGENTS.filter((a) => a.status === "active").length;
   const upgradedToday = DEV_AGENTS.filter((a) => a.upgraded).length;
-  const totalCapacity = team.length + activeAgents + DEV_AGENTS.length;
+  const totalCapacity = team.length + activeAgents + DEV_AGENTS.length + DATA_AGENTS.length;
 
   return (
     <div>
@@ -169,13 +219,16 @@ export default function OrgChartView() {
         <div>
           <h2 className="text-xl font-bold text-white">Organisation</h2>
           <p className="text-xs text-grey mt-1">
-            {team.length} human{team.length !== 1 ? "s" : ""} · {AI_AGENTS.length} ops agents ({activeAgents} active) · {DEV_AGENTS.length} dev agents — {totalCapacity} total capacity
+            {team.length} human{team.length !== 1 ? "s" : ""} · {AI_AGENTS.length} ops agents ({activeAgents} active) · {DEV_AGENTS.length} dev agents · {DATA_AGENTS.length} data agents — {totalCapacity} total capacity
           </p>
           {upgradedToday > 0 && (
             <p className="text-[10px] text-violet-400 mt-0.5">
-              ↑ {upgradedToday} dev agents upgraded today (2026-04-23)
+              ↑ {upgradedToday} dev agents upgraded 2026-04-23
             </p>
           )}
+          <p className="text-[10px] text-cyan-400 mt-0.5">
+            ✦ Data Department onboarded 2026-05-01 — {DATA_AGENTS.length} agents active
+          </p>
         </div>
       </div>
 
@@ -340,13 +393,72 @@ export default function OrgChartView() {
           </div>
         </div>
 
+        {/* Data Department — Embedia Data & Intelligence */}
+        <div className="w-full max-w-5xl mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Embedia Data Department</h3>
+            <span className="text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded-full font-semibold">
+              {DATA_AGENTS.length} agents · all active
+            </span>
+            <span className="text-[10px] bg-gold/10 border border-gold/30 text-gold px-2 py-0.5 rounded-full font-semibold">
+              ✦ Onboarded 2026-05-01
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {DATA_AGENTS.map((agent) => (
+              <div
+                key={agent.id}
+                className="bg-dark-2 border border-cyan-500/40 hover:border-cyan-400/70 rounded-xl p-3 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-sm flex-shrink-0">
+                      {agent.emoji}
+                    </div>
+                    <div className="text-[11px] font-bold text-white leading-tight">{agent.name}</div>
+                  </div>
+                  {agent.isNew && (
+                    <span className="text-[8px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide flex-shrink-0 ml-1">
+                      New
+                    </span>
+                  )}
+                </div>
+                <div className="text-[9px] text-dark-5 leading-relaxed mb-2">{agent.desc}</div>
+                <div className="flex flex-wrap gap-1">
+                  {agent.skills.slice(0, 2).map((skill) => (
+                    <span key={skill} className="text-[8px] bg-dark-3 text-grey px-1.5 py-0.5 rounded font-mono">
+                      {skill.split("-").slice(0, 2).join("-")}
+                    </span>
+                  ))}
+                  {agent.skills.length > 2 && (
+                    <span className="text-[8px] text-dark-5">+{agent.skills.length - 2}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Departments Overview */}
         <div className="w-full max-w-5xl mt-8">
           <h3 className="text-sm font-bold uppercase tracking-wider text-dark-5 mb-4">Functional Areas</h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             {DEPARTMENTS.map((dept) => (
-              <div key={dept.name} className={`bg-dark-2 border border-dark-4 rounded-lg p-4 border-t-2 border-t-${dept.color}`}>
-                <div className="text-xs font-bold text-white mb-1">{dept.name}</div>
+              <div
+                key={dept.name}
+                className={`bg-dark-2 border rounded-lg p-4 ${
+                  (dept as { isNew?: boolean }).isNew
+                    ? "border-cyan-500/40 border-t-2 border-t-cyan-400"
+                    : `border-dark-4 border-t-2 border-t-${dept.color}`
+                }`}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="text-xs font-bold text-white">{dept.name}</div>
+                  {(dept as { isNew?: boolean }).isNew && (
+                    <span className="text-[8px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-1 py-0.5 rounded font-bold uppercase">New</span>
+                  )}
+                </div>
                 <div className="text-[10px] text-dark-5 leading-relaxed">{dept.description}</div>
               </div>
             ))}
