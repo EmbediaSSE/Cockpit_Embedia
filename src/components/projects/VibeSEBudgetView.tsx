@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import * as XLSX from "xlsx";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BudgetTrack {
@@ -161,6 +162,57 @@ export default function VibeSEBudgetView() {
     setSaving(false);
   }
 
+  function exportToExcel() {
+    if (!active) return;
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: Summary ─────────────────────────────────────
+    const summaryRows = [
+      ["VibeSE MVP — Budget Baseline", active.version, new Date(active.baseline_date).toLocaleDateString("en-GB")],
+      [],
+      ["Metric", "Min", "Max"],
+      ["Sprints total", active.sprints_total_min, active.sprints_total_max],
+      ["Weeks total", active.weeks_total_min, active.weeks_total_max],
+      ["Cost total (€)", active.cost_total_min_eur, active.cost_total_max_eur],
+      [],
+      ["Notes", active.notes ?? ""],
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+
+    // ── Sheet 2: Tracks ──────────────────────────────────────
+    const headers = [
+      "Track", "Category",
+      "Sprints Plan Min", "Sprints Plan Max", "Sprints Actual", "Sprint Variance",
+      "Cost Plan Min (€)", "Cost Plan Max (€)", "Cost Actual (€)",
+      "Progress %", "Status", "Risk", "Notes", "Last Updated",
+    ];
+    const trackRows = (active.vibese_budget_tracks || []).map(t => {
+      const midPlan = (t.sprints_planned_min + t.sprints_planned_max) / 2;
+      const variance = t.sprints_actual !== null ? t.sprints_actual - midPlan : null;
+      return [
+        t.track_name, t.category ?? "",
+        t.sprints_planned_min, t.sprints_planned_max,
+        t.sprints_actual ?? "",
+        variance !== null ? +variance.toFixed(1) : "",
+        t.cost_planned_min_eur, t.cost_planned_max_eur,
+        t.cost_actual_eur ?? "",
+        t.progress_pct,
+        t.status, t.risk_level,
+        t.notes ?? "",
+        t.updated_at ? new Date(t.updated_at).toLocaleDateString("en-GB") : "",
+      ];
+    });
+    const wsTracks = XLSX.utils.aoa_to_sheet([headers, ...trackRows]);
+    // Column widths
+    wsTracks["!cols"] = [22,12,14,14,14,14,16,16,16,12,14,10,40,14].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, wsTracks, "Tracks");
+
+    // ── Download ─────────────────────────────────────────────
+    const fileName = `VibeSE_Budget_${active.version}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
+
   if (loading) return (
     <div style={{ padding: "2rem", color: "var(--color-text-secondary)", fontSize: 14 }}>
       Loading budget baseline...
@@ -179,8 +231,8 @@ export default function VibeSEBudgetView() {
             Actuals vs baseline · updated each sprint
           </p>
         </div>
-        {/* Baseline version selector */}
-        <div style={{ display: "flex", gap: 6 }}>
+        {/* Baseline version selector + export */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {baselines.map(b => (
             <button
               key={b.version}
@@ -197,6 +249,24 @@ export default function VibeSEBudgetView() {
               {b.version}
             </button>
           ))}
+          <button
+            onClick={exportToExcel}
+            disabled={!active}
+            style={{
+              fontSize: 12, fontWeight: 500, padding: "4px 12px",
+              borderRadius: 6, border: "0.5px solid var(--color-border-secondary)",
+              background: "var(--color-background-secondary)",
+              color: "var(--color-text-primary)",
+              cursor: active ? "pointer" : "not-allowed",
+              display: "flex", alignItems: "center", gap: 5,
+              marginLeft: 8,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export .xlsx
+          </button>
         </div>
       </div>
 
