@@ -88,6 +88,16 @@ function IconBolt({ gold }: { gold: boolean }) {
   );
 }
 
+function IconBudget({ gold }: { gold: boolean }) {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+      stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3 13.5V19a1 1 0 001 1h16a1 1 0 001-1v-5.5M3 13.5V9a1 1 0 011-1h16a1 1 0 011 1v4.5M3 13.5h18M9 8V5m6 3V5M7 16h2m4 0h2" />
+    </svg>
+  );
+}
+
 function IconAI() {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
@@ -126,6 +136,7 @@ const NAV_ITEMS = [
   { id: "sprint",       label: "Sprint",       Icon: IconClipboard },
   { id: "org",          label: "Organisation", Icon: IconUsers     },
   { id: "intelligence", label: "Intelligence", Icon: IconBolt      },
+  { id: "vibese-budget", label: "VibeSE Budget", Icon: IconBudget   },
 ];
 
 const MOBILE_IDS = ["dashboard", "projects", "pipeline", "sprint", "intelligence"];

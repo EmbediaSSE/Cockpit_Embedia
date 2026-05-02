@@ -11,6 +11,7 @@ import ChatPanel from "@/components/chat/ChatPanel";
 import SettingsView from "@/components/settings/SettingsView";
 import UserManagementView from "@/components/settings/UserManagementView";
 import ProjectsView from "@/components/projects/ProjectsView";
+import VibeSEBudgetView from "@/components/projects/VibeSEBudgetView";
 import PipelineView from "@/components/pipeline/PipelineView";
 import OrgChartView from "@/components/org/OrgChartView";
 import CriticalNow from "@/components/dashboard/CriticalNow";
@@ -353,7 +354,10 @@ function DashboardInner() {
               </div>
 
               {/* Charts Row */}
-              <DashboardCharts onBarClick={(code) => openPanel("project", code)} />
+              <DashboardCharts
+                onBarClick={(code) => openPanel("project", code)}
+                onAccountClick={(id) => openPanel("account", id)}
+              />
 
               {/* Critical Now */}
               <SectionTitle>Critical Now</SectionTitle>
@@ -457,6 +461,7 @@ function DashboardInner() {
 
           {/* ── Other views ─────────────────────────────────────── */}
           {activeView === "projects"     && <ProjectsView />}
+          {activeView === "vibese-budget" && <VibeSEBudgetView />}
           {activeView === "pipeline"     && <PipelineView />}
           {activeView === "roadmap"      && <RoadmapView />}
           {activeView === "sprint"       && <SprintBoardView />}
