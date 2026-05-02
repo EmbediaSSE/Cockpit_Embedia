@@ -30,6 +30,7 @@ import dynamic from "next/dynamic";
 const RoadmapView     = dynamic(() => import("@/components/roadmap/RoadmapView"),      { loading: () => <ViewPlaceholder label="Loading Roadmap…" /> });
 const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardView"),   { loading: () => <ViewPlaceholder label="Loading Sprint Board…" /> });
 const IntelligenceView= dynamic(() => import("@/components/intelligence/IntelligenceView"), { loading: () => <ViewPlaceholder label="Loading Intelligence…" /> });
+const StrategyView    = dynamic(() => import("@/components/strategy/StrategyView"),          { loading: () => <ViewPlaceholder label="Loading Strategy…" /> });
 
 function ViewPlaceholder({ label }: { label: string }) {
   return (
@@ -467,6 +468,7 @@ function DashboardInner() {
           {activeView === "sprint"       && <SprintBoardView />}
           {activeView === "org"          && <OrgChartView />}
           {activeView === "intelligence" && <IntelligenceView />}
+          {activeView === "strategy"     && <StrategyView />}
 
           {activeView === "settings" && (
             <SettingsView onViewChange={setActiveView} />
