@@ -27,10 +27,11 @@ import type { Project, Milestone } from "@/lib/supabase/types";
 
 // ── Lazy-loaded views (heavy) ─────────────────────────────────
 import dynamic from "next/dynamic";
-const RoadmapView     = dynamic(() => import("@/components/roadmap/RoadmapView"),      { loading: () => <ViewPlaceholder label="Loading Roadmap…" /> });
-const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardView"),   { loading: () => <ViewPlaceholder label="Loading Sprint Board…" /> });
+const RoadmapView     = dynamic(() => import("@/components/roadmap/RoadmapView"),           { loading: () => <ViewPlaceholder label="Loading Roadmap…" /> });
+const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardView"),        { loading: () => <ViewPlaceholder label="Loading Sprint Board…" /> });
 const IntelligenceView= dynamic(() => import("@/components/intelligence/IntelligenceView"), { loading: () => <ViewPlaceholder label="Loading Intelligence…" /> });
-const StrategyView    = dynamic(() => import("@/components/strategy/StrategyView"),          { loading: () => <ViewPlaceholder label="Loading Strategy…" /> });
+const StrategyView    = dynamic(() => import("@/components/strategy/StrategyView"),         { loading: () => <ViewPlaceholder label="Loading Strategy…" /> });
+const GTMView         = dynamic(() => import("@/components/pipeline/GTMView"),              { loading: () => <ViewPlaceholder label="Loading GTM…" /> });
 
 function ViewPlaceholder({ label }: { label: string }) {
   return (
@@ -462,13 +463,15 @@ function DashboardInner() {
 
           {/* ── Other views ─────────────────────────────────────── */}
           {activeView === "projects"     && <ProjectsView />}
-          {activeView === "vibese-budget" && <VibeSEBudgetView />}
           {activeView === "pipeline"     && <PipelineView />}
+          {activeView === "gtm"          && <GTMView />}
           {activeView === "roadmap"      && <RoadmapView />}
           {activeView === "sprint"       && <SprintBoardView />}
           {activeView === "org"          && <OrgChartView />}
           {activeView === "intelligence" && <IntelligenceView />}
           {activeView === "strategy"     && <StrategyView />}
+          {activeView === "finance"      && <VibeSEBudgetView />}
+          {activeView === "vibese-budget" && <VibeSEBudgetView />}
 
           {activeView === "settings" && (
             <SettingsView onViewChange={setActiveView} />

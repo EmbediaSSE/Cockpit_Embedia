@@ -28,16 +28,6 @@ function IconHome({ gold }: { gold: boolean }) {
   );
 }
 
-function IconGrid({ gold }: { gold: boolean }) {
-  return (
-    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-      stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round"
-        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-    </svg>
-  );
-}
-
 function IconBars({ gold }: { gold: boolean }) {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
@@ -48,12 +38,22 @@ function IconBars({ gold }: { gold: boolean }) {
   );
 }
 
-function IconMap({ gold }: { gold: boolean }) {
+function IconMegaphone({ gold }: { gold: boolean }) {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
       stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
-        d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+        d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+    </svg>
+  );
+}
+
+function IconGrid({ gold }: { gold: boolean }) {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+      stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
   );
 }
@@ -68,12 +68,12 @@ function IconClipboard({ gold }: { gold: boolean }) {
   );
 }
 
-function IconUsers({ gold }: { gold: boolean }) {
+function IconMap({ gold }: { gold: boolean }) {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
       stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
-        d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
     </svg>
   );
 }
@@ -88,7 +88,7 @@ function IconBolt({ gold }: { gold: boolean }) {
   );
 }
 
-function IconBudget({ gold }: { gold: boolean }) {
+function IconStrategy({ gold }: { gold: boolean }) {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
       stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
@@ -98,12 +98,22 @@ function IconBudget({ gold }: { gold: boolean }) {
   );
 }
 
-function IconStrategy({ gold }: { gold: boolean }) {
+function IconUsers({ gold }: { gold: boolean }) {
   return (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
       stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
-        d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+        d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+    </svg>
+  );
+}
+
+function IconFinance({ gold }: { gold: boolean }) {
+  return (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+      stroke={gold ? "#F5A623" : "currentColor"} strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
     </svg>
   );
 }
@@ -136,22 +146,69 @@ function IconChevrons({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-// ── Nav config ────────────────────────────────────────────────────────────────
+// ── Grouped Nav config ────────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
-  { id: "dashboard",    label: "Dashboard",    Icon: IconHome      },
-  { id: "projects",     label: "Projects",     Icon: IconGrid      },
-  { id: "pipeline",     label: "Pipeline",     Icon: IconBars      },
-  { id: "roadmap",      label: "Roadmap",      Icon: IconMap       },
-  { id: "sprint",       label: "Sprint",       Icon: IconClipboard },
-  { id: "org",          label: "Organisation", Icon: IconUsers     },
-  { id: "intelligence", label: "Intelligence", Icon: IconBolt      },
-  { id: "strategy",     label: "Strategy",     Icon: IconStrategy  },
-  { id: "vibese-budget", label: "VibeSE Budget", Icon: IconBudget   },
+type NavItem = { id: string; label: string; Icon: React.ComponentType<{ gold: boolean }> };
+type NavGroup = { label: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "OVERVIEW",
+    items: [
+      { id: "dashboard",    label: "Dashboard",    Icon: IconHome },
+    ],
+  },
+  {
+    label: "REVENUE",
+    items: [
+      { id: "pipeline",     label: "Pipeline",     Icon: IconBars },
+      { id: "gtm",          label: "GTM",          Icon: IconMegaphone },
+    ],
+  },
+  {
+    label: "DELIVERY",
+    items: [
+      { id: "projects",     label: "Projects",     Icon: IconGrid },
+      { id: "sprint",       label: "Sprint",       Icon: IconClipboard },
+      { id: "roadmap",      label: "Roadmap",      Icon: IconMap },
+    ],
+  },
+  {
+    label: "INTELLIGENCE",
+    items: [
+      { id: "intelligence", label: "Intelligence", Icon: IconBolt },
+      { id: "strategy",     label: "Strategy",     Icon: IconStrategy },
+    ],
+  },
+  {
+    label: "COMPANY",
+    items: [
+      { id: "org",          label: "Organisation", Icon: IconUsers },
+      { id: "finance",      label: "Finance",      Icon: IconFinance },
+    ],
+  },
 ];
 
-const MOBILE_IDS = ["dashboard", "projects", "pipeline", "sprint", "intelligence"];
-const MOBILE_NAV = NAV_ITEMS.filter((n) => MOBILE_IDS.includes(n.id));
+// Flat list for mobile nav (pick the most important)
+const MOBILE_IDS = ["dashboard", "pipeline", "projects", "sprint", "intelligence"];
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+const MOBILE_NAV = ALL_ITEMS.filter((n) => MOBILE_IDS.includes(n.id));
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+function GroupLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 px-3 mt-4 mb-1 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
+      {collapsed ? (
+        <div className="w-full h-px bg-dark-4" />
+      ) : (
+        <span className="text-[9px] font-bold tracking-[2px] text-dark-5 uppercase whitespace-nowrap select-none">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -171,7 +228,6 @@ export default function Sidebar({
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Persist collapse state
   useEffect(() => {
     try {
       const saved = localStorage.getItem("sidebar-collapsed");
@@ -186,7 +242,6 @@ export default function Sidebar({
     });
   };
 
-  // Close user menu on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -216,13 +271,16 @@ export default function Sidebar({
     now.getHours() < 12 ? "Morning" :
     now.getHours() < 18 ? "Afternoon" : "Evening";
 
+  // Active label for mobile header
+  const activeLabel = ALL_ITEMS.find((n) => n.id === activeView)?.label ?? "Cockpit";
+
   return (
     <>
       {/* ── Desktop Sidebar ────────────────────────────────────── */}
       <aside
         className="hidden md:flex flex-col h-full border-r border-dark-4 flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
         aria-label="Main navigation"
-        style={{ backgroundColor: "#111111", width: collapsed ? "64px" : "240px" }}
+        style={{ backgroundColor: "#111111", width: collapsed ? "64px" : "220px" }}
       >
         {/* Logo */}
         <div className={`flex items-center h-16 border-b border-dark-4 px-3 gap-3 flex-shrink-0 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
@@ -232,49 +290,57 @@ export default function Sidebar({
             <div className="text-sm font-bold whitespace-nowrap">
               <span className="text-gold">Embedia</span>.io
             </div>
-            <div className="text-[10px] text-grey whitespace-nowrap">War Room Cockpit</div>
+            <div className="text-[10px] text-grey whitespace-nowrap">War Room</div>
           </div>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5" role="navigation">
-          {NAV_ITEMS.map(({ id, label, Icon }) => {
-            const active = activeView === id;
-            return (
-              <button
-                key={id}
-                onClick={() => onViewChange(id)}
-                title={collapsed ? label : undefined}
-                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer group overflow-hidden ${
-                  active
-                    ? "bg-gold/10 text-gold"
-                    : "text-grey hover:text-white hover:bg-white/5"
-                }`}
-              >
-                {/* Active indicator pill */}
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gold rounded-r-full" />
-                )}
-                <Icon gold={active} />
-                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                  collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                } ${active ? "text-gold" : ""}`}>
-                  {label}
-                </span>
-                {/* Tooltip when collapsed */}
-                {collapsed && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-dark-3 border border-dark-4 text-white text-xs rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
-                    {label}
-                  </div>
-                )}
-              </button>
-            );
-          })}
+        {/* Grouped Nav */}
+        <nav className="flex-1 overflow-y-auto py-2 px-2" role="navigation">
+          {NAV_GROUPS.map((group, gi) => (
+            <div key={group.label}>
+              {/* Only show group label after the first group to avoid top padding */}
+              {gi > 0 && <GroupLabel label={group.label} collapsed={collapsed} />}
+              {gi === 0 && (
+                <div className="mb-1" />
+              )}
+              <div className="space-y-0.5">
+                {group.items.map(({ id, label, Icon }) => {
+                  const active = activeView === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => onViewChange(id)}
+                      title={collapsed ? label : undefined}
+                      className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer group overflow-hidden ${
+                        active
+                          ? "bg-gold/10 text-gold"
+                          : "text-grey hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gold rounded-r-full" />
+                      )}
+                      <Icon gold={active} />
+                      <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                      } ${active ? "text-gold" : ""}`}>
+                        {label}
+                      </span>
+                      {collapsed && (
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-dark-3 border border-dark-4 text-white text-xs rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+                          {label}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Bottom actions */}
         <div className="border-t border-dark-4 p-2 space-y-1.5 flex-shrink-0">
-          {/* Ask AI */}
           <button
             onClick={onChatToggle}
             title={collapsed ? "Ask AI" : undefined}
@@ -289,8 +355,6 @@ export default function Sidebar({
               Ask AI
             </span>
           </button>
-
-          {/* New Record */}
           <button
             onClick={onNewRecord}
             title={collapsed ? "New Record" : undefined}
@@ -305,7 +369,6 @@ export default function Sidebar({
 
         {/* User section */}
         <div className="border-t border-dark-4 p-2 flex-shrink-0" ref={menuRef}>
-          {/* Avatar + name */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -326,7 +389,6 @@ export default function Sidebar({
               )}
             </button>
 
-            {/* User dropdown */}
             {userMenuOpen && (
               <div className={`absolute bottom-full mb-2 bg-dark-2 border border-dark-4 rounded-xl shadow-2xl overflow-hidden z-[100] ${
                 collapsed ? "left-full ml-2 w-56" : "left-0 right-0"
@@ -369,7 +431,6 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* Collapse toggle */}
           <button
             onClick={toggleCollapsed}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -402,7 +463,7 @@ export default function Sidebar({
           </span>
         </div>
         <span className="text-[10px] font-semibold uppercase tracking-widest text-grey">
-          {NAV_ITEMS.find((n) => n.id === activeView)?.label ?? "Cockpit"}
+          {activeLabel}
         </span>
         <div className="flex items-center gap-2">
           <button
