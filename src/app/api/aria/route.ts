@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/aria — return all agents ordered by XP desc
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("aria_agents")
     .select("*")
@@ -16,7 +16,7 @@ export async function GET() {
 // PATCH /api/aria — increment XP and task count for a given agent slug
 // Body: { slug: string; xp_gain: number }
 export async function PATCH(req: Request) {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
   const body = await req.json();
   const { slug, xp_gain = 10 } = body as { slug: string; xp_gain?: number };
 
