@@ -18,6 +18,7 @@ import CriticalNow from "@/components/dashboard/CriticalNow";
 import DailyBriefing from "@/components/dashboard/DailyBriefing";
 import AdminSwimlane from "@/components/dashboard/AdminSwimlane";
 import CeoBacklog from "@/components/dashboard/CeoBacklog";
+import ARIAWidget from "@/components/dashboard/ARIAWidget";
 import DetailPanel from "@/components/shared/DetailPanel";
 import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
 import CreateRecordModal from "@/components/shared/CreateRecordModal";
@@ -28,6 +29,7 @@ import type { Project, Milestone } from "@/lib/supabase/types";
 // ── Lazy-loaded views (heavy) ─────────────────────────────────
 import dynamic from "next/dynamic";
 const RoadmapView     = dynamic(() => import("@/components/roadmap/RoadmapView"),           { loading: () => <ViewPlaceholder label="Loading Roadmap…" /> });
+const ARIAView        = dynamic(() => import("@/components/aria/ARIAView"),                 { loading: () => <ViewPlaceholder label="Loading ARIA…" /> });
 const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardView"),        { loading: () => <ViewPlaceholder label="Loading Sprint Board…" /> });
 const IntelligenceView= dynamic(() => import("@/components/intelligence/IntelligenceView"), { loading: () => <ViewPlaceholder label="Loading Intelligence…" /> });
 const StrategyView    = dynamic(() => import("@/components/strategy/StrategyView"),         { loading: () => <ViewPlaceholder label="Loading Strategy…" /> });
@@ -398,6 +400,10 @@ function DashboardInner() {
               <SectionTitle>Admin &amp; Compliance</SectionTitle>
               <AdminSwimlane onTaskClick={(task) => openPanel("task", task.code)} />
 
+              {/* ARIA — Agent Ranking */}
+              <SectionTitle>ARIA — Agent Ranking</SectionTitle>
+              <ARIAWidget onViewChange={setActiveView} />
+
               {/* Daily Briefing */}
               <SectionTitle>Daily Briefing</SectionTitle>
               <DailyBriefing />
@@ -472,6 +478,8 @@ function DashboardInner() {
           {activeView === "strategy"     && <StrategyView />}
           {activeView === "finance"      && <VibeSEBudgetView />}
           {activeView === "vibese-budget" && <VibeSEBudgetView />}
+
+          {activeView === "aria"         && <ARIAView />}
 
           {activeView === "settings" && (
             <SettingsView onViewChange={setActiveView} />

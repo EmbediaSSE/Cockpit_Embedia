@@ -256,6 +256,18 @@ export interface CoworkTask {
   processed_at:   string | null;
 }
 
+// ── ARIA Agent Ranking System ─────────────────────────────────────────────────
+export interface AriaAgent {
+  id:          string;
+  slug:        string;
+  name:        string;
+  icon:        string;
+  xp:          number;
+  tasks_count: number;
+  last_active: string | null;
+  created_at:  string;
+}
+
 // Panel types for DetailPanel
 export type PanelType = "project" | "task" | "milestone" | "account" | "decision" | "agent" | "news" | "content";
 
