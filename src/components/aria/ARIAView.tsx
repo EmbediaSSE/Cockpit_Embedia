@@ -6,22 +6,21 @@ import type { AriaAgent } from "@/lib/supabase/types";
 // ── Rank system ──────────────────────────────────────────────────────────────
 
 interface Rank {
-  name:      string;
-  min:       number;
-  max:       number;
-  color:     string; // bar + badge accent
-  bgClass:   string; // tailwind bg for icon bg
-  textClass: string; // tailwind text for badge text
+  name:  string;
+  min:   number;
+  max:   number;
+  color: string; // bar + badge accent
+  bg:    string; // rgba background for icon / badge
 }
 
 const RANKS: Rank[] = [
-  { name: "Dormant",  min: 0,    max: 24,         color: "#6B7280", bgClass: "bg-dark-4",       textClass: "text-dark-5"  },
-  { name: "Awakened", min: 25,   max: 149,         color: "#3B82F6", bgClass: "bg-blue-900/40",  textClass: "text-blue-400" },
-  { name: "Learning", min: 150,  max: 399,         color: "#10B981", bgClass: "bg-emerald-900/40", textClass: "text-emerald-400" },
-  { name: "Adaptive", min: 400,  max: 999,         color: "#22C55E", bgClass: "bg-green-900/40", textClass: "text-green-400" },
-  { name: "Expert",   min: 1000, max: 2999,        color: "#F5A623", bgClass: "bg-gold/10",      textClass: "text-gold"    },
-  { name: "Elite",    min: 3000, max: 7999,        color: "#F97316", bgClass: "bg-orange-900/40", textClass: "text-orange-400" },
-  { name: "Apex",     min: 8000, max: Infinity,    color: "#A855F7", bgClass: "bg-purple-900/40", textClass: "text-purple-400" },
+  { name: "Dormant",  min: 0,    max: 24,        color: "#6B7280", bg: "rgba(107,114,128,0.12)" },
+  { name: "Awakened", min: 25,   max: 149,        color: "#3B82F6", bg: "rgba(59,130,246,0.12)"  },
+  { name: "Learning", min: 150,  max: 399,        color: "#10B981", bg: "rgba(16,185,129,0.12)"  },
+  { name: "Adaptive", min: 400,  max: 999,        color: "#22C55E", bg: "rgba(34,197,94,0.12)"   },
+  { name: "Expert",   min: 1000, max: 2999,       color: "#F5A623", bg: "rgba(245,166,35,0.10)"  },
+  { name: "Elite",    min: 3000, max: 7999,       color: "#F97316", bg: "rgba(249,115,22,0.12)"  },
+  { name: "Apex",     min: 8000, max: Infinity,   color: "#A855F7", bg: "rgba(168,85,247,0.12)"  },
 ];
 
 function getRank(xp: number): { rank: Rank; index: number } {
@@ -81,7 +80,8 @@ function AgentCard({ agent }: { agent: AriaAgent }) {
   return (
     <div className="bg-dark-2 border border-dark-4 rounded-xl p-4 hover:border-dark-5 transition-colors">
       {/* Icon */}
-      <div className={`w-9 h-9 rounded-lg ${rank.bgClass} flex items-center justify-center mb-3`}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+        style={{ backgroundColor: rank.bg }}>
         <AgentIcon icon={agent.icon} color={rank.color} />
       </div>
 
@@ -89,7 +89,8 @@ function AgentCard({ agent }: { agent: AriaAgent }) {
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="text-sm font-semibold text-white">{agent.name}</span>
         <span
-          className={`text-[9px] font-bold uppercase tracking-[1.5px] px-2 py-0.5 rounded-full ${rank.bgClass} ${rank.textClass}`}
+          className="text-[9px] font-bold uppercase tracking-[1.5px] px-2 py-0.5 rounded-full"
+          style={{ backgroundColor: rank.bg, color: rank.color }}
         >
           {rank.name}
         </span>

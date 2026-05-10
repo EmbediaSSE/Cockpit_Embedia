@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import type { AriaAgent } from "@/lib/supabase/types";
 
 const RANKS = [
-  { name: "Dormant",  min: 0,    color: "#6B7280", bgClass: "bg-dark-4",          textClass: "text-dark-5"       },
-  { name: "Awakened", min: 25,   color: "#3B82F6", bgClass: "bg-blue-900/40",     textClass: "text-blue-400"     },
-  { name: "Learning", min: 150,  color: "#10B981", bgClass: "bg-emerald-900/40",  textClass: "text-emerald-400"  },
-  { name: "Adaptive", min: 400,  color: "#22C55E", bgClass: "bg-green-900/40",    textClass: "text-green-400"    },
-  { name: "Expert",   min: 1000, color: "#F5A623", bgClass: "bg-gold/10",         textClass: "text-gold"         },
-  { name: "Elite",    min: 3000, color: "#F97316", bgClass: "bg-orange-900/40",   textClass: "text-orange-400"   },
-  { name: "Apex",     min: 8000, color: "#A855F7", bgClass: "bg-purple-900/40",   textClass: "text-purple-400"   },
+  { name: "Dormant",  min: 0,    color: "#6B7280" },
+  { name: "Awakened", min: 25,   color: "#3B82F6" },
+  { name: "Learning", min: 150,  color: "#10B981" },
+  { name: "Adaptive", min: 400,  color: "#22C55E" },
+  { name: "Expert",   min: 1000, color: "#F5A623" },
+  { name: "Elite",    min: 3000, color: "#F97316" },
+  { name: "Apex",     min: 8000, color: "#A855F7" },
 ];
 
 function getRank(xp: number) {
@@ -101,7 +101,10 @@ export default function ARIAWidget({ onViewChange }: ARIAWidgetProps) {
                     style={{ width: `${prog}%`, backgroundColor: rank.color }}
                   />
                 </div>
-                <span className={`text-[9px] font-bold uppercase tracking-wide ${rank.textClass} w-14 text-right`}>
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wide w-14 text-right"
+                  style={{ color: rank.color }}
+                >
                   {rank.name}
                 </span>
               </div>

@@ -91,10 +91,20 @@ export default function CriticalNow({ onItemClick }: CriticalNowProps) {
     medium:   "border-l-dark-5 bg-dark-3",
   };
 
-  const typeIcon: Record<string, string> = {
-    task:     "⏱",
-    decision: "⚡",
-  };
+  function TypeIcon({ type }: { type: string }) {
+    if (type === "task") {
+      return (
+        <svg className="w-4 h-4 shrink-0 text-dark-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    }
+    return (
+      <svg className="w-4 h-4 shrink-0 text-dark-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+      </svg>
+    );
+  }
 
   if (loading) {
     return (
@@ -111,7 +121,11 @@ export default function CriticalNow({ onItemClick }: CriticalNowProps) {
   if (items.length === 0) {
     return (
       <div className="bg-dark-2 rounded-[10px] border border-dark-4 px-5 py-4 mb-2 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-status-green/15 flex items-center justify-center text-status-green text-sm">✓</div>
+        <div className="w-8 h-8 rounded-full bg-status-green/15 flex items-center justify-center">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#34C759" strokeWidth={2.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
         <div>
           <div className="text-sm font-semibold text-white">All clear</div>
           <div className="text-[10px] text-dark-5">No overdue tasks or pending decisions past deadline</div>
@@ -128,7 +142,7 @@ export default function CriticalNow({ onItemClick }: CriticalNowProps) {
           onClick={() => onItemClick(item.type, item.id)}
           className={`w-full flex items-center gap-3 px-4 py-3 border-l-4 border-b border-dark-4 last:border-b-0 text-left hover:brightness-110 transition-all ${urgencyStyles[item.urgency]}`}
         >
-          <span className="text-sm shrink-0">{typeIcon[item.type]}</span>
+          <TypeIcon type={item.type} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-white truncate">{item.label}</div>
             <div className="text-[10px] text-dark-5 mt-0.5">{item.sub}</div>
