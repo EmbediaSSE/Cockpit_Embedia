@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import KpiCard from "@/components/dashboard/KpiCard";
-import SectionTitle from "@/components/dashboard/SectionTitle";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import MilestoneBar from "@/components/dashboard/MilestoneBar";
 import ChatPanel from "@/components/chat/ChatPanel";
@@ -15,9 +14,6 @@ import VibeSEBudgetView from "@/components/projects/VibeSEBudgetView";
 import PipelineView from "@/components/pipeline/PipelineView";
 import OrgChartView from "@/components/org/OrgChartView";
 import CriticalNow from "@/components/dashboard/CriticalNow";
-import DailyBriefing from "@/components/dashboard/DailyBriefing";
-import AdminSwimlane from "@/components/dashboard/AdminSwimlane";
-import CeoBacklog from "@/components/dashboard/CeoBacklog";
 import ARIAWidget from "@/components/dashboard/ARIAWidget";
 import DetailPanel from "@/components/shared/DetailPanel";
 import KpiDrillPanel, { type KpiDrillData } from "@/components/dashboard/KpiDrillPanel";
@@ -330,7 +326,7 @@ function DashboardInner() {
           {activeView === "dashboard" && (
             <>
               {/* KPI Strip — 6 cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                 {kpisLoading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="bg-dark-2 rounded-[10px] border border-dark-4 h-20 animate-pulse" />
@@ -357,113 +353,146 @@ function DashboardInner() {
                 )}
               </div>
 
-              {/* Charts Row */}
+              {/* Charts — full width */}
               <DashboardCharts
                 onBarClick={(code) => openPanel("project", code)}
                 onAccountClick={(id) => openPanel("account", id)}
               />
 
-              {/* Critical Now */}
-              <SectionTitle>Critical Now</SectionTitle>
-              <CriticalNow onItemClick={(type, id) => openPanel(type as "decision" | "project", id)} />
+              {/* ── Cockpit grid — 3 columns ─────────────────────── */}
+              <div className="grid grid-cols-1 lg:grid-cols-[28%_1fr_25%] gap-4">
 
-              {/* Enterprise Milestones */}
-              <SectionTitle>Enterprise Milestones</SectionTitle>
-              <div className="bg-dark-2 rounded-[10px] border border-dark-4 px-6 py-2 mb-2">
-                <MilestoneBar milestones={milestonesToBar} />
-              </div>
+                {/* ── Col 1: Critical signals ── */}
+                <div className="flex flex-col gap-4 min-w-0">
 
-              {/* Portfolio */}
-              <SectionTitle>Portfolio — Active Workstreams</SectionTitle>
-              <div className="bg-dark-2 rounded-[10px] border border-dark-4 overflow-hidden">
-                <div className="flex items-center px-3 py-2 text-[9px] font-bold uppercase tracking-[1.5px] text-dark-5 border-b border-dark-4">
-                  <div className="w-2 mr-3" />
-                  <div className="flex-1">Project</div>
-                  <div className="w-16 text-center">Priority</div>
-                  <div className="w-[80px] text-right">Stage</div>
-                  <div className="w-5" />
+                  {/* Critical Now */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[2px] text-dark-5">Critical Now</span>
+                    </div>
+                    <CriticalNow onItemClick={(type, id) => openPanel(type as "decision" | "project", id)} />
+                  </div>
+
+                  {/* Milestones */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[2px] text-dark-5">Enterprise Milestones</span>
+                    </div>
+                    <div className="bg-dark-2 rounded-[10px] border border-dark-4 px-4 py-3">
+                      <MilestoneBar milestones={milestonesToBar} />
+                    </div>
+                  </div>
                 </div>
-                {(projects.length > 0 ? projects : SEED_PROJECTS).map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    onClick={handleProjectClick}
-                  />
-                ))}
-              </div>
 
-              {/* CEO & Project Backlog */}
-              <SectionTitle>CEO &amp; Project Backlog</SectionTitle>
-              <CeoBacklog />
-
-              {/* Admin & Compliance Tasks */}
-              <SectionTitle>Admin &amp; Compliance</SectionTitle>
-              <AdminSwimlane onTaskClick={(task) => openPanel("task", task.code)} />
-
-              {/* ARIA — Agent Ranking */}
-              <SectionTitle>ARIA — Agent Ranking</SectionTitle>
-              <ARIAWidget onViewChange={setActiveView} />
-
-              {/* Daily Briefing */}
-              <SectionTitle>Daily Briefing</SectionTitle>
-              <DailyBriefing />
-
-              {/* Quick Actions */}
-              <SectionTitle>Quick Actions</SectionTitle>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  {
-                    label: "Daily Briefing",
-                    desc: "Ask Chief of Staff",
-                    icon: (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    label: "Pipeline Status",
-                    desc: "Ask BizDev Agent",
-                    icon: (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    label: "Draft Proposal",
-                    desc: "Ask Content Agent",
-                    icon: (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    label: "Architecture Review",
-                    desc: "Ask MBSE Agent",
-                    icon: (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                      </svg>
-                    ),
-                  },
-                ].map((action) => (
-                  <button
-                    key={action.label}
-                    onClick={() => setChatOpen(true)}
-                    className="bg-dark-2 border border-dark-4 rounded-xl p-4 text-left hover:border-gold/40 hover:bg-dark-3 transition-all group cursor-pointer"
-                  >
-                    <div className="text-grey group-hover:text-gold transition-colors mb-3">
-                      {action.icon}
+                {/* ── Col 2: Active Portfolio ── */}
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[9px] font-bold uppercase tracking-[2px] text-dark-5">Active Portfolio</span>
+                    <button
+                      onClick={() => setActiveView("projects")}
+                      className="text-[10px] text-gold hover:text-gold/70 transition-colors"
+                    >
+                      See all →
+                    </button>
+                  </div>
+                  <div className="bg-dark-2 rounded-[10px] border border-dark-4 overflow-hidden">
+                    <div className="flex items-center px-3 py-2 text-[9px] font-bold uppercase tracking-[1.5px] text-dark-5 border-b border-dark-4">
+                      <div className="w-2 mr-3" />
+                      <div className="flex-1">Project</div>
+                      <div className="w-16 text-center">Priority</div>
+                      <div className="w-[80px] text-right">Stage</div>
+                      <div className="w-5" />
                     </div>
-                    <div className="text-sm font-semibold group-hover:text-gold transition-colors">
-                      {action.label}
+                    {(() => {
+                      const list = projects.length > 0 ? projects : SEED_PROJECTS;
+                      const visible = list.slice(0, 6);
+                      const extra   = list.length - 6;
+                      return (
+                        <>
+                          {visible.map((project) => (
+                            <ProjectCard key={project.id} project={project} onClick={handleProjectClick} />
+                          ))}
+                          {extra > 0 && (
+                            <button
+                              onClick={() => setActiveView("projects")}
+                              className="w-full px-4 py-2.5 text-center text-[10px] text-grey hover:text-gold transition-colors border-t border-dark-4 cursor-pointer"
+                            >
+                              +{extra} more →
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* ── Col 3: ARIA + Quick Actions ── */}
+                <div className="flex flex-col gap-4 min-w-0">
+
+                  {/* ARIA widget */}
+                  <ARIAWidget onViewChange={setActiveView} />
+
+                  {/* Quick Actions 2×2 */}
+                  <div>
+                    <div className="mb-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[2px] text-dark-5">Quick Actions</span>
                     </div>
-                    <div className="text-[10px] text-grey mt-0.5">{action.desc}</div>
-                  </button>
-                ))}
-              </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        {
+                          label: "Daily Briefing",
+                          desc: "Chief of Staff",
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Pipeline",
+                          desc: "BizDev Agent",
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Draft",
+                          desc: "Content Agent",
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Architecture",
+                          desc: "MBSE Agent",
+                          icon: (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                            </svg>
+                          ),
+                        },
+                      ].map((action) => (
+                        <button
+                          key={action.label}
+                          onClick={() => setChatOpen(true)}
+                          className="bg-dark-2 border border-dark-4 rounded-xl p-3 text-left hover:border-gold/40 hover:bg-dark-3 transition-all group cursor-pointer"
+                        >
+                          <div className="text-grey group-hover:text-gold transition-colors mb-2">
+                            {action.icon}
+                          </div>
+                          <div className="text-xs font-semibold group-hover:text-gold transition-colors leading-tight">{action.label}</div>
+                          <div className="text-[10px] text-grey mt-0.5">{action.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>{/* end cockpit grid */}
             </>
           )}
 
