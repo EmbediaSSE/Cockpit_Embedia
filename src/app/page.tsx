@@ -30,6 +30,7 @@ const SprintBoardView = dynamic(() => import("@/components/sprint/SprintBoardVie
 const IntelligenceView= dynamic(() => import("@/components/intelligence/IntelligenceView"), { loading: () => <ViewPlaceholder label="Loading Intelligence…" /> });
 const StrategyView    = dynamic(() => import("@/components/strategy/StrategyView"),         { loading: () => <ViewPlaceholder label="Loading Strategy…" /> });
 const GTMView         = dynamic(() => import("@/components/pipeline/GTMView"),              { loading: () => <ViewPlaceholder label="Loading GTM…" /> });
+const ProductView     = dynamic(() => import("@/components/product/ProductView"),           { loading: () => <ViewPlaceholder label="Loading SE OS Product…" /> });
 
 function ViewPlaceholder({ label }: { label: string }) {
   return (
@@ -500,6 +501,7 @@ function DashboardInner() {
           {activeView === "projects"     && <ProjectsView />}
           {activeView === "pipeline"     && <PipelineView />}
           {activeView === "gtm"          && <GTMView />}
+          {activeView === "product"      && <ProductView />}
           {activeView === "roadmap"      && <RoadmapView />}
           {activeView === "sprint"       && <SprintBoardView />}
           {activeView === "org"          && <OrgChartView />}

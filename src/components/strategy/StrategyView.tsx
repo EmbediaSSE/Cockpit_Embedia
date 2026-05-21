@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { usePanel } from "@/contexts/PanelContext";
 import type { NewsItem } from "@/lib/supabase/types";
 
+// Note: SE OS Strategic Bets, Product Horizon, and Open Decisions moved to ProductView (SE OS tab)
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface StrategicBet {
@@ -519,11 +521,6 @@ function TechIntelFeed({ onItemClick }: { onItemClick: (id: string) => void }) {
 export default function StrategyView() {
   const { openPanel } = usePanel();
 
-  const confirmed = STRATEGIC_BETS.filter(b => b.status === "confirmed").length;
-  const active    = STRATEGIC_BETS.filter(b => b.status === "active").length;
-  const watch     = STRATEGIC_BETS.filter(b => b.status === "watch").length;
-  const draft     = STRATEGIC_BETS.filter(b => b.status === "draft").length;
-
   return (
     <div className="space-y-4">
 
@@ -532,30 +529,8 @@ export default function StrategyView() {
         <div>
           <h2 className="text-xl font-bold text-white">Strategy</h2>
           <p className="text-xs text-[#8E8E93] mt-1">
-            SE OS architectural decisions · Tech scouting · Product horizon
+            Tech scouting · Market intelligence · SE OS product moved to <span className="text-[#F5A623]">SE OS</span> tab
           </p>
-        </div>
-        {/* Stats bar */}
-        <div className="flex items-center gap-4 pt-1">
-          <StatPill value={STRATEGIC_BETS.length} label="bets"      color="text-white" />
-          <div className="w-px h-4 bg-[#2A2A2A]" />
-          <StatPill value={confirmed} label="confirmed" color="text-[#27AE60]" />
-          <StatPill value={active}    label="active"    color="text-[#F5A623]" />
-          <StatPill value={watch}     label="watch"     color="text-[#60A5FA]" />
-          {draft > 0 && <StatPill value={draft} label="draft" color="text-[#8E8E93]" />}
-        </div>
-      </div>
-
-      {/* ── Product Horizon — full width ── */}
-      <ProductHorizon />
-
-      {/* ── Strategic Bets (left 2/3) + Open Decisions (right 1/3) ── */}
-      <div className="grid grid-cols-3 gap-4 items-start">
-        <div className="col-span-2">
-          <StrategicBetsGrid />
-        </div>
-        <div className="col-span-1" style={{ minHeight: 400 }}>
-          <OpenDecisionsPanel />
         </div>
       </div>
 
