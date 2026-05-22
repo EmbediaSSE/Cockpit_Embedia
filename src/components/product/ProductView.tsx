@@ -613,14 +613,16 @@ function OpenDecisionsPanel() {
 interface HorizonItem { phase: string; label: string; status: "done" | "active" | "planned" }
 
 const SE_OS_HORIZON: HorizonItem[] = [
-  { phase: "Phase 1",   label: "VibeSE MVP — Cloud Run",             status: "done"    },
-  { phase: "Phase 2",   label: "Garrett LoRA adapter (ADR-004)",     status: "done"    },
-  { phase: "S11–S21",   label: "FuSa uplift · RFLP v1.1 · E2E eval", status: "done"    },
-  { phase: "S22–S24",   label: "RFLP v1.5 · Dashboard · CORS fix",   status: "done"    },
-  { phase: "Sprint 25", label: "Dashboard API wiring",                status: "active"  },
-  { phase: "Phase 2b",  label: "Central Brain + Validation Agent",    status: "planned" },
-  { phase: "Phase 2c",  label: "KGE + WSCI Tier 2/3",                status: "planned" },
-  { phase: "Phase 3",   label: "GRPO + KGE AI Reasoning",            status: "planned" },
+  { phase: "Phase 1",   label: "VibeSE MVP — Cloud Run",                              status: "done"    },
+  { phase: "Phase 2",   label: "Garrett LoRA adapter (ADR-004)",                      status: "done"    },
+  { phase: "S11–S21",   label: "FuSa uplift · RFLP v1.1 · E2E eval",                 status: "done"    },
+  { phase: "S22–S24",   label: "RFLP v1.5 · Dashboard · CORS fix",                   status: "done"    },
+  { phase: "Sprint 25", label: "Dashboard API wiring",                                status: "active"  },
+  { phase: "S44–S46",   label: "RFLP SFT fine-tune · Mistral base · vibese-rflp-v1.0", status: "planned" },
+  { phase: "S47–S48",   label: "Multi-LoRA serving (ADR-010) · per-customer adapters", status: "planned" },
+  { phase: "Phase 2b",  label: "Central Brain + Validation Agent",                    status: "planned" },
+  { phase: "Phase 2c",  label: "KGE + WSCI Tier 2/3",                                status: "planned" },
+  { phase: "Phase 3",   label: "GRPO + KGE AI Reasoning · Federated LoRA (ADR-009)", status: "planned" },
 ];
 
 const HORIZON_STYLE: Record<HorizonItem["status"], { dot: string; text: string; bg: string; connector: string }> = {
@@ -635,7 +637,7 @@ function SprintHorizon() {
       <div className="px-5 py-3 border-b border-[#2A2A2A] flex items-center justify-between">
         <div>
           <div className="text-sm font-bold text-white">Sprint Horizon</div>
-          <div className="text-[10px] text-[#3A3A3A]">VibeSE sprint cadence · updated 2026-05-21</div>
+          <div className="text-[10px] text-[#3A3A3A]">VibeSE sprint cadence · updated 2026-05-22</div>
         </div>
         <span className="text-[9px] font-bold px-2 py-1 rounded-full bg-[#F5A623]/15 text-[#F5A623] animate-pulse">
           Sprint 25 Active
