@@ -53,7 +53,12 @@ CREATE INDEX IF NOT EXISTS idx_vibese_budget_tracks_baseline
 ALTER TABLE vibese_budget_baselines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vibese_budget_tracks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated" ON vibese_budget_baselines
-  FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON vibese_budget_tracks
-  FOR ALL USING (true);
+-- Policies scoped to authenticated role only (anon has no access;
+-- Cowork writes use the service role, which bypasses RLS).
+-- Applied live on 2026-07-08 after Supabase advisor flagged rls_disabled_in_public.
+CREATE POLICY "authenticated_read_budget_baselines" ON vibese_budget_baselines
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "authenticated_read_budget_tracks" ON vibese_budget_tracks
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "authenticated_update_budget_tracks" ON vibese_budget_tracks
+  FOR UPDATE TO authenticated USING (true);
